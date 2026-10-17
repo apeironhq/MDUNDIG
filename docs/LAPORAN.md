@@ -311,6 +311,14 @@ Diperbaiki:
 
 Hasil pindai setelah perbaikan: tidak ada teks/kontrol yang mepet tepi di semua halaman & popup (ponsel, tablet, desktop). Dua temuan sisa sengaja dibiarkan: item daftar di panel lonceng memang inset 7px untuk sorotan hover, dan "Detail teknis" di detail order hanya terdeteksi karena berada di area gulir.
 
+## 5ab. Perbaikan: "Terjadi kesalahan pada server" saat memberi akses
+
+- Gejala: Tambah akun dengan undangan dipilih, dan Atur akses di Pengguna, selalu gagal dengan "Terjadi kesalahan pada server".
+- Penyebab: pengecekan "undangan sudah dipakai akun lain" (fitur akses 1:1, 5w) memakai embed `profiles(...)` tanpa nama relasi. Tabel `invitation_access` & `owner_mappings` punya dua relasi ke `profiles` (user_id & granted_by/created_by), sehingga PostgREST menolak dengan **300 PGRST201** (relasi ambigu). Terlihat di log Supabase live (3 permintaan gagal, 17 Okt 08:23–08:25 UTC). Tes lokal tidak menangkapnya karena memakai data tiruan, bukan PostgREST.
+- Perbaikan: embed menyebut relasinya (`profiles!invitation_access_user_id_fkey`, `profiles!owner_mappings_user_id_fkey`), sama seperti kode lain. Diverifikasi langsung ke PostgREST live: kueri lama 300 PGRST201, kueri baru terselesaikan.
+- Tidak ada data setengah jadi: pengecekan berjalan sebelum akun dibuat / akses diubah.
+- Pencegahan: tes baru `tests/unit/embeds.test.ts` memindai semua kueri server; gagal bila ada embed `profiles(` tanpa nama relasi (terbukti gagal pada kode lama).
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

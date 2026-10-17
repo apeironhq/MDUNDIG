@@ -23,11 +23,11 @@ export async function invitationHolder(admin: SessionUser, invitationId: string,
   if (inv.error) throw dbError(inv.error)
   if (!inv.data) return null
   const title = (inv.data.title as string) || 'Tanpa judul'
-  const acc = await admin.db.from('invitation_access').select('user_id, profiles(username, display_name)').eq('invitation_id', invitationId).neq('user_id', exceptUserId).limit(1).maybeSingle()
+  const acc = await admin.db.from('invitation_access').select('user_id, profiles!invitation_access_user_id_fkey(username, display_name)').eq('invitation_id', invitationId).neq('user_id', exceptUserId).limit(1).maybeSingle()
   if (acc.error) throw dbError(acc.error)
   if (acc.data) return { name: holderName(acc.data.profiles as { username?: string; display_name?: string } | null), title }
   if (inv.data.owner_external_id) {
-    const map = await admin.db.from('owner_mappings').select('user_id, profiles(username, display_name)')
+    const map = await admin.db.from('owner_mappings').select('user_id, profiles!owner_mappings_user_id_fkey(username, display_name)')
       .eq('website_id', inv.data.website_id as string).eq('external_owner_id', inv.data.owner_external_id as string).neq('user_id', exceptUserId).limit(1).maybeSingle()
     if (map.error) throw dbError(map.error)
     if (map.data) return { name: holderName(map.data.profiles as { username?: string; display_name?: string } | null), title }
