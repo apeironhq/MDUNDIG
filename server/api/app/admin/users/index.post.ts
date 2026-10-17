@@ -1,4 +1,5 @@
 import { internalEmail, normalizeEmail, normalizeUsername, passwordProblem } from '../../../../lib/accounts'
+import { normalizeWhatsapp } from '../../../../../shared/whatsapp'
 
 // Admin membuat akun pelanggan langsung (username + password). Akun baru selalu berperan pelanggan;
 // undangan yang boleh dilihat bisa langsung dipilih (invitation_ids) atau diatur belakangan.
@@ -13,6 +14,10 @@ export default defineEventHandler(async (event) => {
   const email = rawEmail ? normalizeEmail(rawEmail) : internalEmail(username)
   if (!email) throw badRequest('Alamat email tidak valid.')
   const displayName = typeof body.display_name === 'string' ? body.display_name.trim().slice(0, 120) : ''
+  // Nomor WhatsApp aktif wajib: dipakai untuk mengirim akses akun ke pelanggan.
+  if (typeof body.whatsapp !== 'string' || !body.whatsapp.trim()) throw badRequest('Nomor WhatsApp wajib diisi untuk mengirim akses akun ke pelanggan.')
+  const whatsapp = normalizeWhatsapp(body.whatsapp)
+  if (!whatsapp) throw badRequest('Nomor WhatsApp tidak valid. Gunakan nomor aktif, mis. 0812-3456-7890 atau +62 812 3456 7890.')
   const invitationIds = invitationIdsParam(body.invitation_ids)
   // Satu akun pelanggan = satu undangan; dicek sebelum akun dibuat.
   if (invitationIds.length > 1) throw badRequest(ONE_INVITATION_MESSAGE + ' Pilih salah satu.')
@@ -35,6 +40,10 @@ export default defineEventHandler(async (event) => {
       data: { message: exists ? 'Email sudah terdaftar.' : 'Akun gagal dibuat oleh Supabase Auth. Periksa kebijakan password/email di Supabase.' },
     })
   }
+  {
+    const { error: waError } = await service.from('profiles').update({ whatsapp }).eq('id', data.user.id)
+    if (waError) console.error(JSON.stringify({ scope: 'user.create', step: 'whatsapp', code: waError.code ?? null }))
+  }
   await audit(user, 'user.create', data.user.id, { username })
   // Akun sudah jadi; bila pemberian akses gagal, akun tetap dikembalikan dan admin diberi tahu.
   let granted = 0
@@ -43,5 +52,5 @@ export default defineEventHandler(async (event) => {
     try { granted = (await syncUserAccess(user, data.user.id, invitationIds)).granted } catch { accessFailed = true }
   }
   setResponseStatus(event, 201)
-  return { id: data.user.id, username, email: rawEmail ? email : null, granted, access_failed: accessFailed }
+  return { id: data.user.id, username, email: rawEmail ? email : null, whatsapp, granted, access_failed: accessFailed }
 })

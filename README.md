@@ -54,7 +54,7 @@ scripts/             bootstrap admin, pemeriksaan secret bundle
 
 ## Akun pelanggan (dibuat admin)
 
-1. **Pengguna & Akses → Tambah akun**: username, password (min. 8), nama/email opsional, dan centang undangan yang boleh dilihat. Akun langsung aktif sebagai pelanggan.
+1. **Pengguna & Akses → Tambah akun**: username, nomor WhatsApp aktif (wajib), password (min. 8), nama/email opsional, lalu pilih satu undangan yang boleh dilihat. Akun langsung aktif sebagai pelanggan, dan aksesnya (username, password, tautan masuk) dapat langsung dikirim lewat WhatsApp tanpa ditulis ulang. Atur ulang password juga menawarkan kirim akses terbaru.
 2. Ubah akses kapan saja lewat tombol **Akses** pada baris akun (popup centang + cari), atau dari **detail undangan → Akses pelanggan**. (Alternatif lanjutan: **Koneksi → Pemetaan otomatis dari WordPress** untuk `owner_id` dari filter `apeiron_daftar_hadiah_owner_id`.)
 3. Pelanggan masuk dengan username, melihat dan **mengunduh laporan PDF/CSV** Daftar Hadiah undangan miliknya saja. Form Order tidak pernah terlihat oleh pelanggan.
 4. Lupa password → admin klik **Password** pada baris akun untuk mengatur ulang.
@@ -71,7 +71,7 @@ Aplikasi ini berfungsi sebagai penyimpanan data widget (katalog, stok, reservasi
 | Order Undangan | manual | ✓ (detail dalam popup per bagian) | status & catatan (semua order); isi field hanya order manual — isi dari widget hanya-lihat | ✓ |
 | Website | ✓ | ✓ | nama, URL, status, lepas ikatan | ✓ bila belum ada data |
 | Token Website | ✓ | ✓ | label, rotasi, cabut | ✓ token yang sudah dicabut |
-| Pengguna | ✓ | ✓ | nama, username, email, peran, password | ✓ (kecuali diri sendiri/admin terakhir) |
+| Pengguna | ✓ | ✓ | nama, username, email, WhatsApp, peran, password | ✓ (kecuali diri sendiri/admin terakhir) |
 | Akses undangan | ✓ per akun (popup centang) atau per undangan | ✓ jumlah per akun | ✓ centang/hapus centang | ✓ |
 
 Pelanggan hanya dapat melihat dan mengunduh laporan (PDF/CSV) Daftar Hadiah undangannya.

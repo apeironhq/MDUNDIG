@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
   const user = await requireAdmin(event)
   const { page, size, from, to } = pageParams(event, 50)
   const query = getQuery(event)
-  let request = user.db.from('profiles').select('id, username, email, display_name, created_at', { count: 'exact' })
+  let request = user.db.from('profiles').select('id, username, email, display_name, whatsapp, created_at', { count: 'exact' })
   // Karakter penyusun filter PostgREST dibuang sebelum dipakai di or().
   const pattern = searchPattern(typeof query.q === 'string' ? query.q.replace(/[,()]/g, ' ') : query.q)
   if (pattern) request = request.or(`email.ilike.${pattern},username.ilike.${pattern},display_name.ilike.${pattern}`)
@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
   }
   return {
     items: (data ?? []).map((p) => ({
-      id: p.id, username: p.username, display_name: p.display_name, created_at: p.created_at,
+      id: p.id, username: p.username, display_name: p.display_name, whatsapp: p.whatsapp ?? null, created_at: p.created_at,
       email: isInternalEmail(p.email) ? '' : p.email,
       role: adminIds.has(p.id) ? 'admin' : 'customer',
       access_count: counts.get(p.id) ?? 0,

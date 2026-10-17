@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, Gift, KeyRound, Pencil, Trash2, UserPlus, UserRound, Users } from 'lucide-vue-next'
+import { ArrowLeft, ArrowRight, Gift, KeyRound, MessageCircle, Pencil, Trash2, UserPlus, UserRound, Users } from 'lucide-vue-next'
+import { formatWhatsapp, normalizeWhatsapp } from '../../../shared/whatsapp'
 
 definePageMeta({ admin: true })
 useHead({ title: 'Pengguna & Akses — MDUNDIG' })
 
-interface UserRow { id: string; username: string | null; email: string; display_name: string; role: 'admin' | 'customer'; created_at: string; access_count?: number; access_title?: string | null }
+interface UserRow { id: string; username: string | null; email: string; display_name: string; role: 'admin' | 'customer'; created_at: string; whatsapp?: string | null; access_count?: number; access_title?: string | null }
 interface InvitationOption { id: string; title: string; website_name: string | null }
 
 const api = useApi()
@@ -42,16 +43,27 @@ onMounted(() => { void users.load() })
 
 // ---- 1. Akun
 const createOpen = ref(false)
-const account = reactive({ username: '', display_name: '', email: '', password: '', confirm: '', invitation_ids: [] as string[] })
+const account = reactive({ username: '', display_name: '', email: '', whatsapp: '', password: '', confirm: '', invitation_ids: [] as string[] })
 const creating = ref(false)
 const createError = ref('')
-// Tambah akun dua langkah: 1) data akun, 2) akses undangan (opsional).
-const createStep = ref<1 | 2>(1)
+// Tambah akun tiga langkah: 1) data akun, 2) akses undangan (opsional), 3) kirim akses lewat WhatsApp.
+const createStep = ref<1 | 2 | 3>(1)
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,31}$/
-function openCreate() { createError.value = ''; createStep.value = 1; createOpen.value = true; void loadInvitations() }
+const WA_INVALID = 'Nomor WhatsApp tidak valid. Gunakan nomor aktif, mis. 0812-3456-7890 atau +62 812 3456 7890.'
+// Data untuk pesan akses (password hanya disimpan di memori selama modal terbuka).
+interface AccessShare { name: string; username: string; password: string; whatsapp: string | null; invitationTitle: string | null; sender: string | null }
+const created = ref<AccessShare | null>(null)
+function openCreate() { createError.value = ''; createStep.value = 1; created.value = null; createOpen.value = true; void loadInvitations() }
+function closeCreate() {
+  createOpen.value = false
+  created.value = null
+  createStep.value = 1
+}
 function nextStep() {
   createError.value = ''
   if (!USERNAME_RE.test(account.username.trim().toLowerCase())) { createError.value = 'Username 3–32 karakter: huruf kecil, angka, titik, garis bawah, atau tanda hubung.'; return }
+  if (!account.whatsapp.trim()) { createError.value = 'Nomor WhatsApp wajib diisi untuk mengirim akses akun ke pelanggan.'; return }
+  if (!normalizeWhatsapp(account.whatsapp)) { createError.value = WA_INVALID; return }
   createError.value = passwordError(account.password, account.confirm)
   if (createError.value) return
   createStep.value = 2
@@ -63,18 +75,23 @@ async function createAccount() {
   if (createError.value) { createStep.value = 1; return }
   creating.value = true
   try {
-    const res = await api.request<{ username: string; granted: number; access_failed: boolean }>('/api/app/admin/users', {
-      method: 'POST', body: { username: account.username, display_name: account.display_name, email: account.email, password: account.password, invitation_ids: account.invitation_ids },
+    const res = await api.request<{ username: string; whatsapp: string | null; granted: number; access_failed: boolean }>('/api/app/admin/users', {
+      method: 'POST', body: { username: account.username, display_name: account.display_name, email: account.email, whatsapp: account.whatsapp, password: account.password, invitation_ids: account.invitation_ids },
     })
     if (res.access_failed) toast.error(`Akun ${res.username} dibuat, tetapi akses undangan gagal disimpan. Atur lewat tombol Akses.`)
     else toast.success(res.granted ? `Akun ${res.username} dibuat dan dapat melihat undangan yang dipilih.` : `Akun ${res.username} dibuat. Atur undangannya lewat tombol Akses.`)
-    createOpen.value = false
-    Object.assign(account, { username: '', display_name: '', email: '', password: '', confirm: '', invitation_ids: [] })
+    const inv = res.granted ? invitations.value.find((i) => i.id === account.invitation_ids[0]) : undefined
+    created.value = {
+      name: account.display_name.trim() || res.username, username: res.username, password: account.password,
+      whatsapp: res.whatsapp ?? normalizeWhatsapp(account.whatsapp), invitationTitle: inv?.title ?? null, sender: inv?.website_name ?? null,
+    }
+    createStep.value = 3
+    Object.assign(account, { username: '', display_name: '', email: '', whatsapp: '', password: '', confirm: '', invitation_ids: [] })
     await users.load()
   } catch (err) {
     createError.value = errorMessage(err, 'Akun gagal dibuat.')
     // Kesalahan data akun (mis. username/email sudah dipakai) diperbaiki di langkah 1.
-    if (/username|email|password/i.test(createError.value)) createStep.value = 1
+    if (/username|email|password|whatsapp/i.test(createError.value)) createStep.value = 1
   } finally {
     creating.value = false
   }
@@ -83,7 +100,9 @@ const resetTarget = ref<UserRow | null>(null)
 const newPassword = ref('')
 const resetting = ref(false)
 const resetError = ref('')
-function openReset(u: UserRow) { resetTarget.value = u; newPassword.value = ''; resetError.value = '' }
+const resetShare = ref<AccessShare | null>(null)
+function openReset(u: UserRow) { resetTarget.value = u; newPassword.value = ''; resetError.value = ''; resetShare.value = null }
+function closeReset() { resetTarget.value = null; resetShare.value = null; newPassword.value = '' }
 async function resetPassword() {
   if (!resetTarget.value || resetting.value) return
   resetError.value = passwordError(newPassword.value)
@@ -91,8 +110,13 @@ async function resetPassword() {
   resetting.value = true
   try {
     await api.request(`/api/app/admin/users/${resetTarget.value.id}/password`, { method: 'POST', body: { password: newPassword.value } })
-    toast.success('Password diperbarui. Sampaikan password baru kepada pengguna secara aman.')
-    resetTarget.value = null
+    const u = resetTarget.value
+    toast.success('Password diperbarui. Kirim akses terbaru kepada pengguna.')
+    // Lanjut ke kirim akses lewat WhatsApp (username + password baru + tautan masuk).
+    resetShare.value = {
+      name: u.display_name || u.username || u.email, username: u.username || u.email, password: newPassword.value,
+      whatsapp: u.whatsapp ?? null, invitationTitle: u.role === 'customer' ? (u.access_title ?? null) : null, sender: null,
+    }
     newPassword.value = ''
   } catch (err) {
     resetError.value = errorMessage(err, 'Password gagal diperbarui.')
@@ -103,22 +127,23 @@ async function resetPassword() {
 
 // ---- Ubah & hapus akun
 const editTarget = ref<UserRow | null>(null)
-const editForm = reactive({ username: '', display_name: '', email: '', role: 'customer' as 'admin' | 'customer' })
+const editForm = reactive({ username: '', display_name: '', email: '', whatsapp: '', role: 'customer' as 'admin' | 'customer' })
 const editSaving = ref(false)
 const editError = ref('')
 const isSelf = (u: UserRow | null) => !!u && u.id === auth.me.value?.id
 function openEditUser(u: UserRow) {
   editTarget.value = u
   editError.value = ''
-  Object.assign(editForm, { username: u.username ?? '', display_name: u.display_name, email: u.email, role: u.role })
+  Object.assign(editForm, { username: u.username ?? '', display_name: u.display_name, email: u.email, whatsapp: formatWhatsapp(u.whatsapp), role: u.role })
 }
 async function saveUser() {
   if (!editTarget.value || editSaving.value) return
+  editError.value = editForm.whatsapp.trim() && !normalizeWhatsapp(editForm.whatsapp) ? WA_INVALID : ''
+  if (editError.value) return
   editSaving.value = true
-  editError.value = ''
   try {
     const self = isSelf(editTarget.value)
-    const body: Record<string, unknown> = { username: editForm.username, display_name: editForm.display_name, email: editForm.email }
+    const body: Record<string, unknown> = { username: editForm.username, display_name: editForm.display_name, email: editForm.email, whatsapp: editForm.whatsapp }
     if (!self) body.role = editForm.role
     await api.request(`/api/app/admin/users/${editTarget.value.id}`, { method: 'PATCH', body })
     toast.success('Akun diperbarui.')
@@ -213,12 +238,13 @@ async function saveAccess() {
       <EmptyState v-else-if="!users.items.value.length" title="Belum ada akun" />
       <div v-else class="table-wrap" tabindex="0" role="region" aria-label="Tabel akun">
         <table v-stack class="table table-stack">
-          <thead><tr><th scope="col">Username</th><th scope="col">Nama</th><th scope="col">Email</th><th scope="col">Peran</th><th scope="col">Undangan</th><th scope="col">Dibuat</th><th scope="col"><span class="sr-only">Aksi</span></th></tr></thead>
+          <thead><tr><th scope="col">Username</th><th scope="col">Nama</th><th scope="col">Email</th><th scope="col">WhatsApp</th><th scope="col">Peran</th><th scope="col">Undangan</th><th scope="col">Dibuat</th><th scope="col"><span class="sr-only">Aksi</span></th></tr></thead>
           <tbody>
             <tr v-for="u in users.items.value" :key="u.id">
               <td class="cell-strong text-mono whitespace-nowrap cell-primary">{{ u.username || '—' }}</td>
               <td>{{ u.display_name || '—' }}</td>
               <td class="whitespace-nowrap">{{ u.email || '—' }}</td>
+              <td class="whitespace-nowrap text-mono">{{ formatWhatsapp(u.whatsapp) || '—' }}</td>
               <td><span class="badge">{{ u.role === 'admin' ? 'Admin platform' : 'Pelanggan' }}</span></td>
               <td class="whitespace-nowrap">
                 <span v-if="u.role === 'admin'" class="text-caption">Semua</span>
@@ -242,12 +268,14 @@ async function saveAccess() {
       <PaginationBar :page="users.page.value" :per-page="users.perPage" :total="users.total.value" :disabled="users.loading.value" @change="users.setPage" />
     </section>
 
-    <ModalDialog :open="createOpen" :icon="UserPlus" title="Tambah akun pelanggan" subtitle="Akun langsung aktif. Sampaikan username dan password kepada pelanggan secara aman." :closable="!creating" @close="createOpen = false">
+    <ModalDialog :open="createOpen" :icon="UserPlus" title="Tambah akun pelanggan" subtitle="Akun langsung aktif. Setelah dibuat, akses akun dapat langsung dikirim ke WhatsApp pelanggan." :closable="!creating" @close="closeCreate">
       <ol class="steps" aria-label="Langkah tambah akun">
-        <li :class="{ active: createStep === 1, done: createStep === 2 }" :aria-current="createStep === 1 ? 'step' : undefined"><span class="step-icon"><UserRound :size="16" /></span><span>1. Data akun</span></li>
-        <li :class="{ active: createStep === 2 }" :aria-current="createStep === 2 ? 'step' : undefined"><span class="step-icon"><Gift :size="16" /></span><span>2. Akses undangan</span></li>
+        <li :class="{ active: createStep === 1, done: createStep > 1 }" :aria-current="createStep === 1 ? 'step' : undefined"><span class="step-icon"><UserRound :size="16" /></span><span>1. Data akun</span></li>
+        <li :class="{ active: createStep === 2, done: createStep > 2 }" :aria-current="createStep === 2 ? 'step' : undefined"><span class="step-icon"><Gift :size="16" /></span><span>2. Akses undangan</span></li>
+        <li :class="{ active: createStep === 3 }" :aria-current="createStep === 3 ? 'step' : undefined"><span class="step-icon"><MessageCircle :size="16" /></span><span>3. Kirim akses</span></li>
       </ol>
-      <form id="account-form" class="flex flex-col gap-5" autocomplete="off" novalidate @submit.prevent="createAccount">
+      <WhatsAppAccessPanel v-if="createStep === 3 && created" v-bind="created" />
+      <form v-else id="account-form" class="flex flex-col gap-5" autocomplete="off" novalidate @submit.prevent="createAccount">
         <template v-if="createStep === 1">
           <div class="field">
             <label for="a-username" class="field-label">Username</label>
@@ -257,6 +285,11 @@ async function saveAccess() {
           <div class="grid gap-5 sm:grid-cols-2">
             <div class="field"><label for="a-name" class="field-label">Nama tampilan (opsional)</label><input id="a-name" v-model="account.display_name" class="input" maxlength="120"></div>
             <div class="field"><label for="a-email" class="field-label">Email (opsional)</label><input id="a-email" v-model="account.email" class="input" type="email"></div>
+          </div>
+          <div class="field">
+            <label for="a-wa" class="field-label">Nomor WhatsApp aktif</label>
+            <input id="a-wa" v-model="account.whatsapp" class="input" inputmode="tel" autocomplete="off" placeholder="0812-3456-7890" required>
+            <p class="field-hint">Wajib. Dipakai untuk mengirim username, password, dan tautan masuk ke pelanggan.</p>
           </div>
           <div class="field">
             <div class="grid gap-5 sm:grid-cols-2">
@@ -273,10 +306,13 @@ async function saveAccess() {
         <p v-if="createError" class="alert tone-err" role="alert">{{ createError }}</p>
       </form>
       <template #footer>
-        <button v-if="createStep === 1" class="btn btn-secondary" type="button" :disabled="creating" @click="createOpen = false">Batal</button>
-        <button v-else class="btn btn-secondary" type="button" :disabled="creating" @click="createStep = 1; createError = ''"><ArrowLeft :size="16" /> Kembali</button>
-        <button v-if="createStep === 1" class="btn btn-primary" type="submit" form="account-form">Berikutnya <ArrowRight :size="16" /></button>
-        <AsyncButton v-else type="submit" form="account-form" :loading="creating"><UserPlus :size="16" /> Buat akun</AsyncButton>
+        <button v-if="createStep === 3" class="btn btn-secondary" type="button" @click="closeCreate">Selesai</button>
+        <template v-else>
+          <button v-if="createStep === 1" class="btn btn-secondary" type="button" :disabled="creating" @click="closeCreate">Batal</button>
+          <button v-else class="btn btn-secondary" type="button" :disabled="creating" @click="createStep = 1; createError = ''"><ArrowLeft :size="16" /> Kembali</button>
+          <button v-if="createStep === 1" class="btn btn-primary" type="submit" form="account-form">Berikutnya <ArrowRight :size="16" /></button>
+          <AsyncButton v-else type="submit" form="account-form" :loading="creating"><UserPlus :size="16" /> Buat akun</AsyncButton>
+        </template>
       </template>
     </ModalDialog>
 
@@ -290,6 +326,11 @@ async function saveAccess() {
         <div class="field">
           <label for="e-email" class="field-label">Email (opsional)</label>
           <input id="e-email" v-model="editForm.email" class="input" type="email">
+        </div>
+        <div class="field">
+          <label for="e-wa" class="field-label">Nomor WhatsApp</label>
+          <input id="e-wa" v-model="editForm.whatsapp" class="input" inputmode="tel" autocomplete="off" placeholder="0812-3456-7890">
+          <p class="field-hint">Dipakai untuk mengirim akses akun lewat WhatsApp.</p>
         </div>
         <div class="field">
           <label for="e-role" class="field-label">Peran</label>
@@ -320,8 +361,11 @@ async function saveAccess() {
         <AsyncButton type="submit" form="access-form" :loading="accessSaving" :disabled="accessLoading">Simpan akses</AsyncButton>
       </template>
     </ModalDialog>
-    <ModalDialog :open="!!resetTarget" :icon="KeyRound" title="Atur ulang password" :subtitle="resetTarget ? label(resetTarget) : ''" size="sm" :closable="!resetting" @close="resetTarget = null">
-      <form id="reset-form" class="flex flex-col gap-4" novalidate @submit.prevent="resetPassword">
+    <ModalDialog :open="!!resetTarget" :icon="resetShare ? MessageCircle : KeyRound" :title="resetShare ? 'Kirim akses terbaru' : 'Atur ulang password'"
+      :subtitle="resetShare ? `Password ${label(resetTarget!)} sudah diganti. Kirim akses terbaru lewat WhatsApp.` : resetTarget ? `${label(resetTarget)} · setelah disimpan, akses baru dapat dikirim lewat WhatsApp.` : ''"
+      :size="resetShare ? 'md' : 'sm'" :closable="!resetting" @close="closeReset">
+      <WhatsAppAccessPanel v-if="resetShare" v-bind="resetShare" />
+      <form v-else id="reset-form" class="flex flex-col gap-4" novalidate @submit.prevent="resetPassword">
         <div class="field">
           <label for="r-pw" class="field-label">Password baru</label>
           <input id="r-pw" v-model="newPassword" class="input" type="password" autocomplete="new-password" required>
@@ -330,8 +374,11 @@ async function saveAccess() {
         <p v-if="resetError" class="alert tone-err" role="alert">{{ resetError }}</p>
       </form>
       <template #footer>
-        <button class="btn btn-secondary" type="button" :disabled="resetting" @click="resetTarget = null">Batal</button>
-        <AsyncButton type="submit" form="reset-form" :loading="resetting">Simpan password</AsyncButton>
+        <button v-if="resetShare" class="btn btn-secondary" type="button" @click="closeReset">Selesai</button>
+        <template v-else>
+          <button class="btn btn-secondary" type="button" :disabled="resetting" @click="closeReset">Batal</button>
+          <AsyncButton type="submit" form="reset-form" :loading="resetting">Simpan password</AsyncButton>
+        </template>
       </template>
     </ModalDialog>
   </div>

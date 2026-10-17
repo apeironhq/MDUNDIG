@@ -1,4 +1,5 @@
 import { internalEmail, isInternalEmail, normalizeEmail, normalizeUsername } from '../../../../lib/accounts'
+import { normalizeWhatsapp } from '../../../../../shared/whatsapp'
 
 // Ubah akun (admin): nama, username, email, peran. Password lewat endpoint terpisah.
 export default defineEventHandler(async (event) => {
@@ -16,6 +17,12 @@ export default defineEventHandler(async (event) => {
   if (body.display_name !== undefined) {
     if (typeof body.display_name !== 'string' || body.display_name.trim().length > 120) throw badRequest('Nama tampilan maksimal 120 karakter.')
     profilePatch.display_name = body.display_name.trim()
+  }
+  if (body.whatsapp !== undefined) {
+    const raw = typeof body.whatsapp === 'string' ? body.whatsapp.trim() : ''
+    const wa = raw ? normalizeWhatsapp(raw) : null
+    if (raw && !wa) throw badRequest('Nomor WhatsApp tidak valid. Gunakan nomor aktif, mis. 0812-3456-7890 atau +62 812 3456 7890.')
+    profilePatch.whatsapp = wa
   }
   let username = current.username as string | null
   if (body.username !== undefined) {

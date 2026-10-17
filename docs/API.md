@@ -170,7 +170,7 @@ Endpoint lain memerlukan `Authorization: Bearer <access_token Supabase>`; query 
 | `GET/POST /api/app/admin/websites`, `PATCH /api/app/admin/websites/:id` | admin |
 | `GET/POST /api/app/admin/websites/:id/tokens`, `POST /api/app/admin/tokens/:id/rotate`, `POST /api/app/admin/tokens/:id/revoke` | admin |
 | `GET /api/app/admin/connection` | admin |
-| `GET /api/app/admin/users`, `POST /api/app/admin/users` (buat akun: username, password, nama/email & `invitation_ids` opsional), `POST /api/app/admin/users/:id/password` (atur ulang), `GET`/`PUT /api/app/admin/users/:id/access` (lihat / samakan akses undangan akun pelanggan: `{ invitation_ids }`) | admin |
+| `GET /api/app/admin/users`, `POST /api/app/admin/users` (buat akun: username, password, `whatsapp` wajib — dinormalisasi ke `62…`, nama/email & `invitation_ids` opsional, maks. satu), `PATCH /api/app/admin/users/:id` (termasuk `whatsapp`; kosong = hapus), `POST /api/app/admin/users/:id/password` (atur ulang), `GET`/`PUT /api/app/admin/users/:id/access` (lihat / samakan akses undangan akun pelanggan: `{ invitation_ids }`) | admin |
 | `GET/POST /api/app/admin/owner-mappings`, `DELETE /api/app/admin/owner-mappings/:id` | admin |
 | `GET/POST /api/app/admin/invitations/:id/access`, `DELETE …/access/:userId` | admin |
 | `GET /api/app/admin/form-orders`, `GET /api/app/admin/form-orders/:id`, `GET /api/app/admin/form-orders/export` (CSV, pemisah `;`), `GET /api/app/admin/form-orders/export-pdf` (PDF) | admin |

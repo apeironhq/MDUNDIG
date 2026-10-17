@@ -19,7 +19,7 @@ export interface MockState {
   tokens: Array<{ id: string; label: string; token_hint: string; scopes: string[]; created_at: string; last_used_at: string | null; revoked_at: string | null }>
   apiCalls: string[]
   delayMs: number
-  createdUsers: Array<{ id: string; username: string; display_name: string; email: string; role: 'customer'; created_at: string }>
+  createdUsers: Array<{ id: string; username: string; display_name: string; email: string; whatsapp: string | null; role: 'customer'; created_at: string }>
   passwordResets: string[]
   grants: Array<{ invitation_id: string; user_id: string }>
   reservations: Array<Record<string, unknown>>
@@ -189,7 +189,7 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
     if (userId && req.method() === 'PATCH') {
       const b = req.postDataJSON() as Record<string, string>
       const u = state.createdUsers.find((x) => x.id === userId[1])
-      if (u) Object.assign(u, { username: b.username, display_name: b.display_name, email: b.email })
+      if (u) Object.assign(u, { username: b.username, display_name: b.display_name, email: b.email, ...(b.whatsapp !== undefined ? { whatsapp: b.whatsapp ? '62' + b.whatsapp.replace(/\D/g, '').replace(/^(62|0)/, '') : null } : {}) })
       state.mutations.push(`user.update:${b.role ?? '-'}`)
       return json(route, { ok: true })
     }
@@ -221,15 +221,18 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
       return json(route, { items, total: items.length, page: 1, per_page: 20 })
     }
     if (path === '/api/app/admin/users' && req.method() === 'POST') {
-      const b = req.postDataJSON() as { username: string; display_name: string; email: string; password: string; invitation_ids?: string[] }
+      const b = req.postDataJSON() as { username: string; display_name: string; email: string; whatsapp?: string; password: string; invitation_ids?: string[] }
       const username = b.username.trim().toLowerCase()
       if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) return json(route, { data: { message: 'Username tidak valid.' } }, 422)
       if (b.password.length < 8) return json(route, { data: { message: 'Password minimal 8 karakter.' } }, 422)
+      const digits = String(b.whatsapp ?? '').replace(/[\s().+-]/g, '')
+      const whatsapp = digits.startsWith('0') ? '62' + digits.slice(1) : digits
+      if (!/^[1-9][0-9]{7,14}$/.test(whatsapp)) return json(route, { data: { message: 'Nomor WhatsApp wajib diisi untuk mengirim akses akun ke pelanggan.' } }, 400)
       if ([USERS.admin.username, USERS.customer.username, ...state.createdUsers.map((u) => u.username)].includes(username)) return json(route, { data: { message: 'Username sudah dipakai.' } }, 409)
-      const created = { id: `00000000-0000-4000-8000-0000000001${String(state.createdUsers.length).padStart(2, '0')}`, username, display_name: b.display_name, email: b.email, role: 'customer' as const, created_at: new Date().toISOString() }
+      const created = { id: `00000000-0000-4000-8000-0000000001${String(state.createdUsers.length).padStart(2, '0')}`, username, display_name: b.display_name, email: b.email, whatsapp, role: 'customer' as const, created_at: new Date().toISOString() }
       state.createdUsers.push(created)
       for (const invitation_id of b.invitation_ids ?? []) state.grants.push({ invitation_id, user_id: created.id })
-      return json(route, { id: created.id, username, email: b.email || null, granted: (b.invitation_ids ?? []).length, access_failed: false }, 201)
+      return json(route, { id: created.id, username, email: b.email || null, whatsapp, granted: (b.invitation_ids ?? []).length, access_failed: false }, 201)
     }
     const pw = /\/api\/app\/admin\/users\/([^/]+)\/password$/.exec(path)
     if (pw) { state.passwordResets.push(pw[1] as string); return json(route, { ok: true }) }

@@ -235,6 +235,16 @@ Bug & perbaikan:
 - Tampilan: pemilih undangan kini pilih-satu (radio) dengan opsi "Tanpa undangan"; kolom Undangan di Pengguna menampilkan judul undangannya; di detail undangan & pemetaan, akun yang sudah punya undangan tampil "(sudah: …)" dan tidak bisa dipilih.
 - Uji: DB 3 tes baru, e2e alur pilih/ganti/cabut. Playwright lulus semua (+ dilewati sengaja), vitest 95/95.
 
+## 5v. Kirim akses akun lewat WhatsApp
+
+- Migrasi `mdundig_profile_whatsapp` **diterapkan**: kolom `profiles.whatsapp` (format `62…`, 8–15 digit, dicek constraint). Akun lama boleh kosong.
+- **Tambah akun** kini tiga langkah: 1) data akun + **Nomor WhatsApp aktif (wajib)**, 2) akses undangan, 3) **Kirim akses**. Server juga mewajibkan & menormalisasi nomor (`0812…`/`+62 812…` → `62812…`), sama seperti plugin.
+- Langkah 3 menampilkan pesan siap kirim (bisa disunting): sapaan, judul undangan, username, password, tautan masuk, panduan singkat, pengingat keamanan, dan nama website pengirim. Tombol **Kirim lewat WhatsApp** membuka chat `wa.me` ke nomor pelanggan dengan pesan terisi; **Salin pesan** untuk dikirim manual.
+- Tautan masuk membawa `?u=<username>` sehingga kolom username di halaman login langsung terisi.
+- Password tidak pernah disimpan dalam bentuk asli, jadi pesan berisi password hanya bisa dibuat saat akun dibuat atau saat **Atur ulang password** — setelah menyimpan password baru, modal berlanjut ke "Kirim akses terbaru".
+- Nomor WhatsApp tampil di tabel akun dan bisa diubah lewat **Ubah akun**.
+- Uji: unit `shared/whatsapp.ts` (normalisasi, format, pesan, tautan), e2e alur wajib/valid nomor → pesan & tautan wa.me → kirim ulang setelah atur ulang password → isi otomatis username di login.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

@@ -6,7 +6,8 @@ useHead({ title: 'Masuk — MDUNDIG' })
 
 const auth = useAuth()
 const route = useRoute()
-const identifier = ref('')
+// Tautan masuk dari pesan akses WhatsApp membawa ?u=<username> agar kolom username langsung terisi.
+const identifier = ref(typeof route.query.u === 'string' ? route.query.u.trim().slice(0, 120) : '')
 const password = ref('')
 const show = ref(false)
 const loading = ref(false)

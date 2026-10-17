@@ -169,11 +169,13 @@ test('pengguna: ubah (jadikan admin) lalu hapus; akun sendiri tidak bisa dihapus
   await page.getByRole('button', { name: 'Tambah akun' }).click()
   const add = page.getByRole('dialog')
   await add.getByLabel('Username').fill('toko.bunga')
+  await add.getByLabel('Nomor WhatsApp aktif').fill('0812-9876-5432')
   await add.getByLabel('Password', { exact: true }).fill('rahasia-toko-1')
   await add.getByLabel('Ulangi password').fill('rahasia-toko-1')
   await add.getByRole('button', { name: 'Berikutnya' }).click()
   await add.getByRole('button', { name: 'Buat akun' }).click()
   await expect(page.getByTestId('toast')).toContainText('Akun toko.bunga dibuat')
+  await add.getByRole('button', { name: 'Selesai' }).click()
 
   await page.getByRole('button', { name: 'Ubah akun toko.bunga' }).click()
   const edit = page.getByRole('dialog')

@@ -1,13 +1,8 @@
 /** Helper murni untuk CRUD admin (dapat diuji tanpa Nuxt). */
 import { RE, cpLength } from './contract'
 
-/** Normalisasi WhatsApp sama seperti plugin (DaftarHadiahController): 08… → 628…, tanpa spasi/tanda. */
-export function normalizeWhatsapp(value: unknown): string | null {
-  if (typeof value !== 'string' || !/^\+?[0-9\s().-]+$/.test(value.trim())) return null
-  let phone = value.trim().replace(/^\+/, '').replace(/[\s().-]/g, '')
-  if (phone.startsWith('0')) phone = '62' + phone.slice(1)
-  return RE.whatsapp.test(phone) ? phone : null
-}
+/** Normalisasi WhatsApp sama seperti plugin — satu sumber di shared/whatsapp (dipakai juga dashboard). */
+export { normalizeWhatsapp } from '../../shared/whatsapp'
 
 export interface OrderEntry { key?: string; label: string; value: string | string[] }
 
