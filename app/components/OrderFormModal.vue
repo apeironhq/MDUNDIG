@@ -115,5 +115,14 @@ async function save() {
 
 <style scoped>
 .entry-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto; gap: 0.5rem; align-items: start; }
-@media (max-width: 560px) { .entry-row { grid-template-columns: 1fr auto; } .entry-row > .field:nth-child(2) { grid-column: 1 / 2; } }
+/* Ponsel: tiap pasangan label + isi jadi satu kotak; tombol hapus sebaris dengan label agar jelas pasangan mana yang dihapus. */
+@media (max-width: 560px) {
+  .entry-row {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'label del' 'value value';
+    padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--r); background: var(--bg-subtle);
+  }
+  .entry-row > .field:nth-child(1) { grid-area: label; }
+  .entry-row > .field:nth-child(2) { grid-area: value; }
+  .entry-row > .btn { grid-area: del; }
+}
 </style>

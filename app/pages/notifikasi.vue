@@ -124,7 +124,7 @@ async function clearNotifications() {
           </div>
         </li>
       </ul>
-      <div class="list-foot">
+      <div v-if="list.total.value > 0" class="list-foot">
         <PaginationBar :page="list.page.value" :per-page="list.perPage" :total="list.total.value" :disabled="list.loading.value" @change="list.setPage" />
         <span v-if="list.items.value.length" class="clear-links">
           <button class="clear-link" type="button" @click="clearMode = 'read'">Hapus yang sudah dibaca</button>
@@ -156,9 +156,14 @@ async function clearNotifications() {
 .quiet { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text-faint); cursor: pointer; }
 .quiet:hover { background: var(--bg-hover); color: var(--text-heading); }
 .quiet-danger:hover { color: var(--err); }
-.list-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
-.list-foot :deep(.pager) { flex: 1; }
-.clear-links { display: inline-flex; align-items: center; gap: 0.5rem; margin-right: 1.25rem; font-size: var(--fs-caption); color: var(--text-faint); }
+/* Footer kartu = satu area berpadding: paginasi di kiri, tautan hapus (sengaja tidak menonjol) di kanan; ponsel: bertumpuk di tengah. */
+.list-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; flex-wrap: wrap; padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
+.list-foot :deep(.pager) { flex: 1; padding: 0; border-top: 0; }
+.clear-links { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--fs-caption); color: var(--text-faint); }
+@media (max-width: 640px) {
+  .list-foot { flex-direction: column; justify-content: center; }
+  .list-foot :deep(.pager) { width: 100%; }
+}
 .clear-link { background: none; border: 0; padding: 0.5rem 0; font-size: var(--fs-caption); color: var(--text-faint); cursor: pointer; }
 .clear-link:hover { color: var(--text-muted); text-decoration: underline; }
 @media (hover: none) { .notif-actions { opacity: 1; } }

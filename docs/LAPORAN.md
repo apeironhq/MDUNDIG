@@ -299,6 +299,18 @@ Dicek & sudah konsisten (tidak diubah): header halaman (judul + deskripsi + tomb
 - Berlaku juga di laporan PDF order (label "Pertama Bertemu — Judul", dst.) dan ringkasan satu baris. Data tersimpan & kontrak plugin tidak berubah — hanya penyusunan tampilan (`shared/orderSections.ts`).
 - Uji: unit (label asli dari data live) & e2e popup detail order.
 
+## 5aa. Audit kerapian detail kecil (mepet tepi, tumpang-tindih)
+
+Metode: semua halaman admin & pelanggan, halaman masuk, dan 8 popup utama (Tambah akun, Kirim WhatsApp, Atur akses, Tambah website, Tambah order, Detail order, Tambah reservasi, menu Unduh) dipindai otomatis di desktop, tablet, dan ponsel: setiap teks & kontrol diukur jaraknya ke tepi kartu/popup (batas minimal 10px), lalu ditinjau lewat screenshot.
+
+Diperbaiki:
+1. **Notifikasi — "Hapus yang sudah dibaca · Hapus semua"** menempel di tepi kiri kartu (ponsel). Footer kartu kini satu area berpadding: paginasi di kiri & tautan hapus di kanan (desktop), bertumpuk di tengah (ponsel); tidak tampil bila daftar kosong.
+2. **Tambah order (ponsel)**: pasangan label + isi bertumpuk tanpa pemisah dan tombol X hanya sejajar kolom isi, sehingga tidak jelas pasangan mana yang dihapus. Kini tiap pasangan satu kotak, X sebaris dengan labelnya.
+3. **Langkah Tambah akun (ponsel)**: "1. Data akun" & "3. Kirim akses" patah dua baris. Kini ikon di atas teks, label satu baris.
+4. **Bilah atas**: teks halaman yang tergulir terbaca tembus di belakangnya. Kini buram (kaca buram), tidak terbaca.
+
+Hasil pindai setelah perbaikan: tidak ada teks/kontrol yang mepet tepi di semua halaman & popup (ponsel, tablet, desktop). Dua temuan sisa sengaja dibiarkan: item daftar di panel lonceng memang inset 7px untuk sorotan hover, dan "Detail teknis" di detail order hanya terdeteksi karena berada di area gulir.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

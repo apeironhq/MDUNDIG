@@ -441,6 +441,10 @@ async function saveAccess() {
 .steps li.done { color: var(--text-body); }
 .step-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--n-100); color: var(--n-500); flex-shrink: 0; }
 .steps li.active .step-icon, .steps li.done .step-icon { color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, transparent); }
+/* Ponsel: ikon di atas teks agar label langkah tetap satu baris. */
+@media (max-width: 640px) {
+  .steps li { flex-direction: column; justify-content: center; gap: 0.35rem; padding: 0.55rem 0.25rem; text-align: center; white-space: nowrap; font-size: var(--fs-caption); }
+}
 fieldset.field { border: 0; margin: 0; padding: 0; min-width: 0; }
 .wa-btn { position: relative; color: var(--text-muted); }
 .wa-btn.unsent { color: var(--brand); }
