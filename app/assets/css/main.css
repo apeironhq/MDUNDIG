@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Font Ubuntu (lisensi: public/fonts/UBUNTU-FONT-LICENSE.txt), disajikan dari domain sendiri. */
+@font-face { font-family: 'Ubuntu'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/ubuntu-400.woff') format('woff'); }
+@font-face { font-family: 'Ubuntu'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/ubuntu-500.woff') format('woff'); }
+@font-face { font-family: 'Ubuntu Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/ubuntu-mono-400.woff') format('woff'); }
+
 /*
  * Design tokens diambil dari Apeiron-portal (frontend/src/styles/tokens.css & base.css,
  * commit 5bb7c8e). Satu warna brand (#2563eb), netral memikul tampilan, radius 10px,

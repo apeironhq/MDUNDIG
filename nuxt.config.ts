@@ -18,12 +18,9 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        {
-          rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500&family=Ubuntu+Mono:wght@400&display=swap',
-        },
+        // Font Ubuntu disajikan dari server sendiri (public/fonts) — tanpa koneksi ke Google Fonts; 2 bobot utama di-preload.
+        { rel: 'preload', href: '/fonts/ubuntu-400.woff', as: 'font', type: 'font/woff', crossorigin: '' },
+        { rel: 'preload', href: '/fonts/ubuntu-500.woff', as: 'font', type: 'font/woff', crossorigin: '' },
       ],
     },
   },
@@ -45,5 +42,6 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/api/**': { headers: { 'cache-control': 'no-store, max-age=0', 'x-content-type-options': 'nosniff' } },
+    '/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
   },
 })

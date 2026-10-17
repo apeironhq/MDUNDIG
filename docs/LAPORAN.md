@@ -213,6 +213,21 @@ Ini **bukan** angka produksi. Di Vercel `sin1` + Supabase `ap-southeast-1` akan 
 - **Gambar hadiah** tidak disimpan di Supabase; gambar diambil langsung dari WordPress (`image_url`). Data saat ini berasal dari `http://aperion.local/…` (situs Local WP di komputer sendiri, http) sehingga diblokir browser di dashboard HTTPS dan tidak dapat diakses dari luar. Kini gambar yang gagal dimuat diganti ikon, dan katalog menjelaskan penyebabnya. Gambar tampil otomatis setelah WordPress online dengan HTTPS.
 - Uji: unit `appUrl` (4), e2e peringatan Koneksi & fallback gambar. Playwright 114 lulus + 18 dilewati sengaja, vitest 92/92.
 
+## 5t. Audit kecepatan, lag & bug
+
+Pengukuran:
+- Vercel (halaman login, tanpa cache peramban): respons server 22 ms, DOM siap 488 ms, selesai dimuat 535 ms, ±168 KB ditransfer.
+- Bundle JS klien: inti ±55 KB gzip + 2 potongan ±30 KB (Supabase & halaman); per halaman dimuat sesuai kebutuhan.
+- Database live: `dashboard_stats(30)` 12 ms. Advisor performa hanya INFO (FK tanpa indeks) → ditambahkan indeks (migrasi `mdundig_fk_indexes` **diterapkan**). Peringatan keamanan `admin_*` SECURITY DEFINER memang disengaja (fungsi memeriksa admin di dalamnya). Sisa saran: aktifkan *Leaked password protection* di Supabase Auth (pengaturan dashboard Supabase).
+- Sapuan semua halaman admin & pelanggan (desktop & ponsel): tidak ada error/peringatan console.
+
+Bug & perbaikan:
+- **Kartu KPI tidak bisa diklik**: dirender sebagai elemen `<nuxtlink>` tak dikenal (`resolveComponent` di template). Kini memakai `NuxtLink` langsung → tautan berfungsi.
+- **Lag/boros CPU**: setiap daftar bergulir menjalankan animasi 60 fps terus-menerus walau diam, disorot, di luar layar, atau tab tersembunyi. Kini animasi hanya berjalan saat pita benar-benar bergerak & terlihat (IntersectionObserver + visibilitychange). Diukur: < 20 frame per 2 detik saat diam (sebelumnya ±360).
+- **Font**: Ubuntu kini disajikan dari domain sendiri (`public/fonts`, 49 KB, preload 2 bobot, cache 1 tahun) — tanpa koneksi ke Google Fonts.
+- **Layar pembuka** berlogo saat aplikasi dimuat (tidak ada layar putih kosong).
+- Uji: 2 tes performa baru (frame animasi, KPI tautan, waktu muat; font lokal & layar pembuka). Playwright 117 lulus + 22 dilewati sengaja, vitest 92/92.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

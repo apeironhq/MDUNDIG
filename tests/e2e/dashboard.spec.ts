@@ -197,7 +197,7 @@ test('navigasi tablet: drawer terbuka & tertutup, tabel dapat digulir', async ({
   const burger = page.getByRole('button', { name: 'Buka menu' })
   await expect(burger).toBeVisible()
   await burger.click()
-  await expect(page.getByRole('link', { name: 'Website' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Website', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Tutup menu' }).click()
   await page.goto('/daftar-hadiah')
   const region = page.getByRole('region', { name: 'Tabel undangan' })
@@ -719,4 +719,43 @@ test('ponsel admin: 4 menu utama + Lainnya (lembar berkelompok, halaman aktif di
   await sheet.getByRole('button', { name: /Keluar/ }).click()
   await expect(page).toHaveURL(/\/login/)
   await noHorizontalOverflow(page)
+})
+
+test('performa: tidak ada animasi berjalan terus saat daftar diam; KPI berupa tautan; muat cepat', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'cukup satu viewport')
+  // Hitung callback requestAnimationFrame (animasi yang terus berjalan membuat halaman lag & boros baterai).
+  await page.addInitScript(() => {
+    const w = window as unknown as { __raf: number }
+    w.__raf = 0
+    const orig = window.requestAnimationFrame.bind(window)
+    window.requestAnimationFrame = (cb) => orig((t) => { w.__raf++; cb(t) })
+  })
+  await installMocks(page, 'customer')
+  const t0 = Date.now()
+  await login(page, 'customer')
+  await expect(page.getByText('Total undangan')).toBeVisible()
+  expect(Date.now() - t0, 'login → Ringkasan tampil').toBeLessThan(5000)
+  // KPI dapat diklik (sebelumnya dirender sebagai elemen <nuxtlink> yang tidak dikenal).
+  await expect(page.locator('a.kpi')).toHaveCount(3)
+  await page.waitForTimeout(1500)
+  const before = await page.evaluate(() => (window as unknown as { __raf: number }).__raf)
+  await page.waitForTimeout(2000)
+  const frames = await page.evaluate(() => (window as unknown as { __raf: number }).__raf) - before
+  // Daftar pendek (tidak bergulir) → nyaris tanpa frame animasi; sebelumnya ±360 frame per 2 detik.
+  expect(frames, 'frame animasi dalam 2 detik saat diam').toBeLessThan(20)
+  await page.locator('a.kpi').first().click()
+  await expect(page).toHaveURL(/\/daftar-hadiah$/)
+})
+
+test('performa: font disajikan sendiri (tanpa Google Fonts) dan layar pembuka berlogo', async ({ page, request }, info) => {
+  test.skip(info.project.name !== 'desktop', 'cukup satu viewport')
+  const external: string[] = []
+  page.on('request', (r) => { if (/fonts\.(googleapis|gstatic)\.com/.test(r.url())) external.push(r.url()) })
+  const html = await (await request.get('/login')).text()
+  expect(html).toContain('Memuat MDUNDIG')
+  await installMocks(page, 'customer')
+  await page.goto('/login')
+  await expect(page.getByRole('button', { name: 'Masuk' })).toBeVisible()
+  expect(await page.evaluate(() => document.fonts.check('500 16px Ubuntu'))).toBe(true)
+  expect(external).toHaveLength(0)
 })

@@ -16,7 +16,10 @@ let raf = 0
 let last = 0
 let holdUntil = 0
 let paused = false
+let inView = true
+let running = false
 let ro: ResizeObserver | undefined
+let io: IntersectionObserver | undefined
 
 const marquee = computed(() => props.auto && !reduced.value)
 
@@ -29,7 +32,7 @@ function measure() {
   if (!looping.value) { offset = 0; apply() } else { wrap(); apply() }
 }
 function hold(ms: number) { holdUntil = performance.now() + ms }
-function setPaused(v: boolean) { paused = v; if (!v) hold(800) }
+function setPaused(v: boolean) { paused = v; if (v) stopLoop(); else { hold(800); startLoop() } }
 function nudge(px: number) { if (!looping.value) return false; offset += px; wrap(); apply(); hold(2500); return true }
 function onWheel(e: WheelEvent) { if (nudge(e.deltaY)) e.preventDefault() }
 function onKey(e: KeyboardEvent) {
@@ -37,26 +40,42 @@ function onKey(e: KeyboardEvent) {
   if (step && nudge(step)) e.preventDefault()
 }
 
+// Animasi hanya berjalan saat pita memang bergerak & terlihat: tidak berjalan untuk daftar statis, saat disorot,
+// saat tab tersembunyi, atau saat daftar di luar layar (hemat CPU/baterai, tidak membuat halaman lag).
+function startLoop() {
+  if (running || !looping.value || paused || !inView || document.hidden) return
+  running = true
+  last = 0
+  raf = requestAnimationFrame(tick)
+}
+function stopLoop() { running = false; cancelAnimationFrame(raf) }
 function tick(t: number) {
+  if (!running) return
   raf = requestAnimationFrame(tick)
   const dt = last ? Math.min(t - last, 64) : 0
   last = t
-  if (!looping.value || paused || document.hidden || t < holdUntil) return
+  if (t < holdUntil) return
   offset += (props.speed * dt) / 1000
   wrap()
   apply()
 }
+function onVisibility() { if (document.hidden) stopLoop(); else startLoop() }
 
 onMounted(() => {
   reduced.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   ro = new ResizeObserver(measure)
   if (box.value) ro.observe(box.value)
   if (first.value) ro.observe(first.value)
+  if (box.value && 'IntersectionObserver' in window) {
+    io = new IntersectionObserver(([e]) => { inView = !!e?.isIntersecting; if (inView) startLoop(); else stopLoop() })
+    io.observe(box.value)
+  }
+  document.addEventListener('visibilitychange', onVisibility)
   hold(1500)
-  raf = requestAnimationFrame(tick)
 })
-onBeforeUnmount(() => { cancelAnimationFrame(raf); ro?.disconnect() })
+onBeforeUnmount(() => { stopLoop(); ro?.disconnect(); io?.disconnect(); document.removeEventListener('visibilitychange', onVisibility) })
 watch(marquee, () => nextTick(measure))
+watch(looping, (v) => { if (v) startLoop(); else stopLoop() })
 </script>
 
 <template>

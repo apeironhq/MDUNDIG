@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { TrendingDown, TrendingUp } from 'lucide-vue-next'
 import type { Component } from 'vue'
+import { NuxtLink } from '#components'
 
 // Kartu KPI: ikon bernada, label, angka besar, perubahan vs 7 hari sebelumnya, sparkline 7 hari.
 const props = withDefaults(defineProps<{
@@ -18,7 +19,7 @@ const delta = computed(() => {
 </script>
 
 <template>
-  <component :is="to ? resolveComponent('NuxtLink') : 'div'" :to="to || undefined" class="kpi card" :class="{ clickable: !!to }">
+  <component :is="to ? NuxtLink : 'div'" :to="to || undefined" class="kpi card" :class="{ clickable: !!to }">
     <div class="kpi-top">
       <span class="kpi-icon" :style="{ color, background: `color-mix(in srgb, ${color} 10%, transparent)` }" aria-hidden="true"><component :is="icon" :size="20" :stroke-width="1.9" /></span>
       <span class="kpi-label">{{ label }}</span>
