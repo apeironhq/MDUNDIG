@@ -28,7 +28,7 @@ export async function fetchOrdersForExport(event: H3Event, user: SessionUser): P
   const status = typeof query.status === 'string' && ['baru', 'diproses', 'selesai', 'batal'].includes(query.status) ? query.status : null
   const orders: Array<OrderExportRow & { request_id: string }> = []
   for (let from = 0; from < MAX_ROWS; from += CHUNK) {
-    let request = user.db.from('form_orders').select('created_at, post_id, post_title, request_id, status, fields, labels, websites(name)')
+    let request = user.db.from('form_orders').select('created_at, post_id, post_title, request_id, status, fields, labels, meta, websites(name)')
     if (website) request = request.eq('website_id', website)
     if (status) request = request.eq('status', status)
     if (pattern) request = request.ilike('search_text', pattern)
@@ -37,7 +37,7 @@ export async function fetchOrdersForExport(event: H3Event, user: SessionUser): P
     for (const o of data ?? []) {
       orders.push({
         created_at: o.created_at, post_title: o.post_title, post_id: o.post_id, request_id: o.request_id, status: o.status,
-        fields: (o.fields ?? {}) as Record<string, unknown>, labels: (o.labels ?? {}) as Record<string, string>,
+        fields: (o.fields ?? {}) as Record<string, unknown>, labels: (o.labels ?? {}) as Record<string, string>, meta: (o.meta ?? {}) as OrderExportRow['meta'],
         site: (o.websites as { name?: string } | null)?.name ?? '',
       })
     }

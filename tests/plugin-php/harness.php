@@ -177,12 +177,19 @@ namespace {
 	$check( FormOrder::send_to_api( $fields, $labels, [ 'post_id' => 5, 'document_id' => 5, 'element_id' => 'order1' ], $submission, $failure ), 'Submit Form Order terkonfirmasi: ' . (string) $failure );
 	$check( FormOrder::send_to_api( $fields, $labels, [ 'post_id' => 5, 'document_id' => 5, 'element_id' => 'order1' ], $submission, $failure ), 'Retry identik tetap sukses (idempoten)' );
 	$changed = $fields; $changed['groom_name'] = 'Budi';
-	$check( ! FormOrder::send_to_api( $changed, $labels, [ 'post_id' => 5, 'document_id' => 5, 'element_id' => 'order1' ], $submission, $failure ) && false !== strpos( (string) $failure, 'Identitas pengiriman' ), 'Konflik request_id ditolak' );
+	$retryable = null;
+	$check( ! FormOrder::send_to_api( $changed, $labels, [ 'post_id' => 5, 'document_id' => 5, 'element_id' => 'order1' ], $submission, $failure, false, [], $retryable ) && false !== strpos( (string) $failure, 'Identitas pengiriman' ) && false === $retryable, 'Konflik request_id ditolak & tidak dikirim ulang' );
+	// Plugin baru: nama step & teks opsi ikut terkirim (kunci opsi angka tetap objek JSON).
+	$meta_fields = [ 'paket' => 'gold', 'nomor' => [ '1', '2' ], 'catatan_khusus' => 'Tema hijau' ];
+	$meta_labels = [ 'paket' => 'Pilihan Paket', 'nomor' => 'Nomor Meja', 'catatan_khusus' => 'Catatan' ];
+	$meta_submission = hash( 'sha256', 'meta|' . wp_json_encode( $meta_fields ) );
+	$meta = [ 'sections' => [ 'paket' => 'Paket & Tema', 'nomor' => 'Paket & Tema', 'tidak_ada' => 'X' ], 'options' => [ 'paket' => [ 'gold' => 'Paket Gold' ], 'nomor' => [ '1' => 'Meja satu', '2' => 'Meja dua' ] ] ];
+	$check( FormOrder::send_to_api( $meta_fields, $meta_labels, [ 'post_id' => 5, 'document_id' => 5, 'element_id' => 'order1' ], $meta_submission, $failure, false, $meta ), 'Submit dengan meta terkonfirmasi: ' . (string) $failure );
 
 	// --- Token salah
 	Settings::save_api_token( 'mdh_' . str_repeat( '0', 64 ) );
 	$bad = Gateway::request( 'ping' );
 	$check( is_wp_error( $bad ) && 'api_unauthorized' === $bad->get_error_code(), 'Token tidak dikenal → api_unauthorized' );
 
-	echo json_encode( [ 'ok' => true, 'checks' => $checks, 'website_id' => Catalog::website_id() ] ), "\n";
+	echo json_encode( [ 'ok' => true, 'checks' => $checks, 'website_id' => Catalog::website_id(), 'meta_request_id' => $meta_submission ] ), "\n";
 }

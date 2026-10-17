@@ -15,13 +15,17 @@ export function useAuth() {
   const session = useState<Session | null>('auth-session', () => null)
   const me = useState<Me | null>('auth-me', () => null)
   const ready = useState<boolean>('auth-ready', () => false)
+  // Akun dengan verifikasi dua langkah: sudah login (password benar) tetapi kode authenticator belum dimasukkan.
+  const mfaPending = useState<boolean>('auth-mfa-pending', () => false)
 
   async function loadMe(): Promise<Me | null> {
     if (!session.value) { me.value = null; return null }
     try {
       me.value = await $fetch<Me>('/api/app/me', { headers: { authorization: `Bearer ${session.value.access_token}` } })
-    } catch {
+      mfaPending.value = false
+    } catch (err) {
       me.value = null
+      mfaPending.value = isMfaRequired(err)
     }
     return me.value
   }
@@ -55,12 +59,27 @@ export function useAuth() {
     await loadMe()
   }
 
+  /** Masukkan kode 6 digit dari aplikasi authenticator → sesi naik ke aal2. */
+  async function verifyMfa(code: string) {
+    const supabase = useSupabase()
+    const { data: factors, error: listError } = await supabase.auth.mfa.listFactors()
+    if (listError) throw listError
+    const factor = factors.totp.find((f) => f.status === 'verified')
+    if (!factor) throw new Error('Verifikasi dua langkah tidak ditemukan untuk akun ini.')
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code })
+    if (error) throw error
+    session.value = (await supabase.auth.getSession()).data.session
+    await loadMe()
+    if (mfaPending.value) throw new Error('Kode belum diterima server. Coba lagi.')
+  }
+
   async function signOut() {
     await useSupabase().auth.signOut().catch(() => {})
     session.value = null
     me.value = null
+    mfaPending.value = false
   }
 
   const isAdmin = computed(() => me.value?.role === 'admin')
-  return { session, me, ready, isAdmin, init, loadMe, signIn, signOut }
+  return { session, me, ready, isAdmin, mfaPending, init, loadMe, signIn, signOut, verifyMfa }
 }

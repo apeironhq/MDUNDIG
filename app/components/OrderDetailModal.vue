@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ClipboardList, Lock, Pencil, Trash2 } from 'lucide-vue-next'
-import { displayValue, groupOrderEntries, isEmptyValue, type OrderEntry, type OrderField } from '../../shared/orderSections'
+import { displayValue, groupOrderEntries, isEmptyValue, type OrderEntry, type OrderField, type OrderMeta } from '../../shared/orderSections'
 import type { OrderEdit } from './OrderFormModal.vue'
 
 // Detail Order Undangan dalam popup: dikelompokkan per bagian (Pemesan, Pria, Wanita, Akad, …), field kosong disembunyikan.
 interface Detail {
   id: string; website_id: string; website: { name: string; site_url: string } | null; post_id: number | null; post_title: string
   document_id: number | null; element_id: string | null; request_id: string; created_at: string; updated_at: string
-  status: string; admin_note: string; source: string; entries: OrderEntry[]
+  status: string; admin_note: string; source: string; entries: OrderEntry[]; meta?: OrderMeta
 }
 const props = defineProps<{ orderId: string | null }>()
 const emit = defineEmits<{ close: []; changed: []; deleted: [] }>()
@@ -26,7 +26,7 @@ async function load() {
 }
 watch(() => props.orderId, (id) => { showEmpty.value = false; if (id) void load(); else data.value = null }, { immediate: true })
 
-const sections = computed(() => groupOrderEntries(data.value?.entries ?? [])
+const sections = computed(() => groupOrderEntries(data.value?.entries ?? [], data.value?.meta)
   .map((s) => ({ ...s, fields: showEmpty.value ? s.fields : s.fields.filter((f) => !f.empty) }))
   .filter((s) => s.fields.length))
 // Field berurutan dengan `group` yang sama → satu blok bersub-judul (mis. tiap cerita di Cerita Cinta).

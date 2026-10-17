@@ -28,6 +28,16 @@ create or replace function auth.uid() returns uuid language sql stable as $$
     (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')), '')::uuid
 $$;
 grant execute on function auth.uid() to anon, authenticated, service_role;
+create or replace function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
+$$;
+grant execute on function auth.jwt() to anon, authenticated, service_role;
+create table if not exists auth.mfa_factors (
+  id uuid primary key, user_id uuid not null, factor_type text not null default 'totp', status text not null default 'unverified'
+);
+do $$ begin
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then create publication supabase_realtime; end if;
+end $$;
 `
 
 export interface LocalDb {

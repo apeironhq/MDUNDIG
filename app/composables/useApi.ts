@@ -1,5 +1,11 @@
 import type { FetchError } from 'ofetch'
 
+/** Respons 401 karena verifikasi dua langkah belum dilakukan (bukan sesi berakhir). */
+export function isMfaRequired(err: unknown): boolean {
+  const e = err as FetchError<{ statusMessage?: string }> & { statusMessage?: string }
+  return e?.statusCode === 401 && (e.statusMessage === 'mfa_required' || e.data?.statusMessage === 'mfa_required')
+}
+
 /** Pesan error ramah dari respons server (tanpa detail teknis). */
 export function errorMessage(err: unknown, fallback = 'Terjadi kesalahan. Silakan coba lagi.'): string {
   const e = err as FetchError<{ data?: { message?: string } }> & { message?: string }
@@ -23,7 +29,10 @@ export function useApi() {
       const res: unknown = await $fetch(url, { method: options.method ?? 'GET', body: options.body as Record<string, unknown> | undefined, query: options.query, headers: await authHeader() })
       return res as T
     } catch (err) {
-      if ((err as FetchError).statusCode === 401) {
+      if (isMfaRequired(err)) {
+        auth.mfaPending.value = true
+        await navigateTo('/verifikasi')
+      } else if ((err as FetchError).statusCode === 401) {
         await auth.signOut()
         await navigateTo({ path: '/login', query: { sesi: 'berakhir' } })
       }

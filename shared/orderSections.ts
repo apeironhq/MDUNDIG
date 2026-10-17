@@ -6,6 +6,8 @@ export interface OrderEntry { key: string; label: string; value: string | string
 /** `group` = sub-bagian di dalam satu bagian (mis. tiap cerita di "Cerita Cinta"). */
 export interface OrderField extends OrderEntry { field: string; empty: boolean; group?: string }
 export interface OrderSection { title: string; fields: OrderField[] }
+/** Meta dari plugin versi baru: nama step per field & teks tampilan opsi pilihan (opsional). */
+export interface OrderMeta { sections?: Record<string, string>; options?: Record<string, Record<string, string>> }
 
 export const isEmptyValue = (v: unknown): boolean =>
   v === null || v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0)
@@ -54,9 +56,9 @@ function loveNames(entries: OrderEntry[]): Map<string, string> {
 
 // Nilai pilihan yang dikirim widget berupa kode opsi; kode bawaan diterjemahkan ke teks yang dibaca manusia.
 const VALUE_LABELS: Record<string, Record<string, string>> = { invitation_side: { pria: 'Pria', wanita: 'Wanita' } }
-export function readableValue(key: string, value: string | string[]): string | string[] {
-  const map = VALUE_LABELS[key]
-  if (!map) return value
+export function readableValue(key: string, value: string | string[], meta?: OrderMeta | null): string | string[] {
+  const map = { ...VALUE_LABELS[key], ...meta?.options?.[key] }
+  if (!Object.keys(map).length) return value
   return Array.isArray(value) ? value.map((v) => map[v] ?? v) : (map[value] ?? value)
 }
 
@@ -92,13 +94,16 @@ function sectionRank(title: string): number {
   return 50
 }
 
-export function groupOrderEntries(entries: OrderEntry[]): OrderSection[] {
+export function groupOrderEntries(entries: OrderEntry[], meta?: OrderMeta | null): OrderSection[] {
   const map = new Map<string, OrderField[]>()
   const names = loveNames(entries)
   for (const e of entries) {
-    const { section, field, group } = splitLabel(e.key, e.label, names)
+    const split = splitLabel(e.key, e.label, names)
+    // Field yang tidak dikenali polanya memakai nama step dari widget (bila dikirim), bukan "Lainnya".
+    const section = split.section === 'Lainnya' && meta?.sections?.[e.key] ? meta.sections[e.key]! : split.section
+    const { field, group } = split
     const list = map.get(section) ?? []
-    list.push({ ...e, value: readableValue(e.key, e.value), field, empty: isEmptyValue(e.value), ...(group ? { group } : {}) })
+    list.push({ ...e, value: readableValue(e.key, e.value, meta), field, empty: isEmptyValue(e.value), ...(group ? { group } : {}) })
     map.set(section, list)
   }
   return [...map.entries()]
@@ -107,14 +112,14 @@ export function groupOrderEntries(entries: OrderEntry[]): OrderSection[] {
 }
 
 /** Ringkasan satu baris: pemesan & mempelai dulu, lalu field terisi lainnya. Field kosong dilewati. */
-export function orderSummary(entries: OrderEntry[], max = 3): string {
+export function orderSummary(entries: OrderEntry[], max = 3, meta?: OrderMeta | null): string {
   const byKey = new Map(entries.map((e) => [e.key, e]))
   const parts: string[] = []
   const used = new Set<string>()
   const pick = (keys: string[], label: string) => {
     for (const k of keys) {
       const e = byKey.get(k)
-      if (e && !isEmptyValue(e.value)) { parts.push(`${label}: ${displayValue(readableValue(k, e.value))}`); used.add(k); return }
+      if (e && !isEmptyValue(e.value)) { parts.push(`${label}: ${displayValue(readableValue(k, e.value, meta))}`); used.add(k); return }
     }
   }
   pick(['customer_name'], 'Pemesan')
@@ -124,7 +129,7 @@ export function orderSummary(entries: OrderEntry[], max = 3): string {
     if (parts.length >= max) break
     if (used.has(e.key) || isEmptyValue(e.value)) continue
     const s = splitLabel(e.key, e.label)
-    parts.push(`${s.group ? `${s.group} — ${s.field}` : s.field}: ${displayValue(readableValue(e.key, e.value))}`)
+    parts.push(`${s.group ? `${s.group} — ${s.field}` : s.field}: ${displayValue(readableValue(e.key, e.value, meta))}`)
   }
   return parts.slice(0, max).join(' · ')
 }

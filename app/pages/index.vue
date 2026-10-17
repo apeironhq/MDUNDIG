@@ -36,6 +36,9 @@ watch(days, load)
 // Data diperbarui sendiri tiap menit (diam-diam, hanya saat tab terlihat) agar urutan & daftar terbaru ikut berganti.
 let refresher: ReturnType<typeof setInterval> | undefined
 onMounted(() => { refresher = setInterval(() => { if (!document.hidden) void load() }, 60_000) })
+// Reservasi/order baru (Realtime) → ringkasan langsung diperbarui.
+const { tick: notifTick } = useNotifications()
+watch(notifTick, () => { void load() })
 onBeforeUnmount(() => clearInterval(refresher))
 
 // Panel baris bawah setinggi panel Status reservasi; isinya digulir di dalam panel.

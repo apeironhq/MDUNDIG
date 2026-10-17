@@ -18,7 +18,9 @@ const ROOT = resolve(__dirname, '../..')
 const SERVER = resolve(ROOT, '.output/server/index.mjs')
 const PLUGIN_DIR = process.env.APEIRON_PLUGIN_DIR
   ?? 'C:/Users/mamay/Local Sites/aperion/app/public/wp-content/plugins/Apeiron'
-const PHP = spawnSync('php', ['-v']).status === 0
+// PHP plugin: dari PATH, atau XAMPP lokal (Windows) bila tersedia.
+const PHP_BIN = process.env.PHP_BIN ?? (spawnSync('php', ['-v']).status === 0 ? 'php' : existsSync('C:/xamppTerbaru/php/php.exe') ? 'C:/xamppTerbaru/php/php.exe' : 'php')
+const PHP = spawnSync(PHP_BIN, ['-v']).status === 0
 const PLUGIN_TOKEN = 'mdh_' + 'ab'.repeat(32)
 const PERF_TOKEN = 'mdh_' + 'cd'.repeat(32)
 const PERF_SITE = 'site-' + 'e'.repeat(32)
@@ -87,13 +89,20 @@ describe('Transport HTTP (server build)', () => {
 
 describe.skipIf(!PHP || !existsSync(PLUGIN_DIR))('Kelas PHP asli plugin ApeironKit → server', () => {
   it('Gateway & FormOrderSettings plugin menerima seluruh respons', () => {
-    const out = spawnSync('php', [resolve(ROOT, 'tests/plugin-php/harness.php')], {
+    const out = spawnSync(PHP_BIN, [resolve(ROOT, 'tests/plugin-php/harness.php')], {
       env: { ...process.env, PLUGIN_DIR, MDUNDIG_PORT: String(port), MDUNDIG_TOKEN: PLUGIN_TOKEN }, encoding: 'utf8', timeout: 120_000,
     })
     if (out.status !== 0) throw new Error(`${out.stdout}\n${out.stderr}`)
     const result = JSON.parse(out.stdout.trim().split('\n').at(-1) as string)
     expect(result.ok).toBe(true)
     expect(result.checks).toBeGreaterThanOrEqual(30)
+    // Meta dari plugin tersimpan apa adanya; field yang tidak dikirim dibuang server.
+    return db.pool.query(`select meta from public.form_orders where request_id = $1`, [result.meta_request_id]).then(({ rows }) => {
+      expect(rows[0]?.meta).toEqual({
+        sections: { paket: 'Paket & Tema', nomor: 'Paket & Tema' },
+        options: { paket: { gold: 'Paket Gold' }, nomor: { 1: 'Meja satu', 2: 'Meja dua' } },
+      })
+    })
   })
 })
 

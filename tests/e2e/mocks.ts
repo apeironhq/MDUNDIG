@@ -1,10 +1,14 @@
 import type { Page, Route } from '@playwright/test'
 
 const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url')
-export function fakeJwt(sub: string, email: string) {
+export function fakeJwt(sub: string, email: string, aal: 'aal1' | 'aal2' = 'aal1') {
   const now = Math.floor(Date.now() / 1000)
-  return `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub, email, role: 'authenticated', aud: 'authenticated', exp: now + 3600, iat: now })}.sig`
+  return `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub, email, role: 'authenticated', aud: 'authenticated', exp: now + 3600, iat: now, aal, amr: [{ method: aal === 'aal2' ? 'totp' : 'password', timestamp: now }] })}.sig`
 }
+const jwtClaims = (header: string | undefined): Record<string, unknown> => {
+  try { return JSON.parse(Buffer.from(String(header ?? '').replace(/^Bearer /, '').split('.')[1] ?? '', 'base64url').toString()) } catch { return {} }
+}
+const isoDay = (offset: number) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 export type Role = 'admin' | 'customer'
 export const USERS = {
@@ -13,6 +17,8 @@ export const USERS = {
 }
 
 const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+const DEFAULT_ACCESS = 'Halo, *{nama}* 👋\n\n👤 *Username:* {username}\n🔑 *Password:* {password}\n\n🔗 *Masuk di sini:*\n{link_login}\n\nTerima kasih 🙏\n{pengirim}'
+const DEFAULT_RECAP = 'Halo, *{nama}* 👋\n\nRekap undangan {undangan}: *{jumlah_reservasi} reservasi*.\n\n{daftar_hadiah}\n\n{link_login}\n\nTerima kasih 🙏\n{pengirim}'
 
 export interface MockState {
   role: Role
@@ -28,6 +34,14 @@ export interface MockState {
   invitations: Array<Record<string, unknown>>
   extraGifts: number
   notifications: Array<{ id: string; kind: 'order' | 'reservation'; title: string; body: string; link: string; read_at: string | null; created_at: string }>
+  events: Array<Record<string, unknown>>
+  audit: Array<Record<string, unknown>>
+  errors: Array<Record<string, unknown>>
+  waTemplates: { access: string | null; recap: string | null }
+  /** Faktor verifikasi dua langkah (Supabase MFA) milik akun yang login. */
+  factors: Array<{ id: string; factor_type: 'totp'; status: 'verified' | 'unverified'; friendly_name: string }>
+  pushSubs: string[]
+  clientErrors: string[]
 }
 
 const INVITATION = { id: '11111111-1111-4111-8111-111111111111', title: 'Andi & Sari', website_name: 'Undangan Utama', gift_count: 2, reservation_count: 1, updated_at: '2026-10-16T08:00:00.000Z' }
@@ -46,7 +60,19 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
           { id: 'a0000000-0000-4000-8000-000000000003', kind: 'reservation', title: 'Reservasi hadiah baru', body: 'Siti memilih Blender — Andi & Sari', link: '/daftar-hadiah/11111111-1111-4111-8111-111111111111', read_at: '2026-10-15T10:00:00Z', created_at: '2026-10-14T10:00:00Z' },
         ]
       : [{ id: 'a0000000-0000-4000-8000-000000000009', kind: 'reservation', title: 'Reservasi hadiah baru', body: 'Budi memilih Rice Cooker — Andi & Sari', link: '/daftar-hadiah/11111111-1111-4111-8111-111111111111', read_at: null, created_at: new Date(Date.now() - 60000).toISOString() }],
-    invitations: [{ ...INVITATION }, { ...INVITATION, id: '55555555-5555-4555-8555-555555555555', title: 'Rina & Doni', reservation_count: 0 }], ...opts }
+    invitations: [{ ...INVITATION }, { ...INVITATION, id: '55555555-5555-4555-8555-555555555555', title: 'Rina & Doni', reservation_count: 0 }],
+    events: [
+      { order_id: '33333333-3333-4333-8333-333333333333', kind: 'akad', event_date: isoDay(2), event_time: '08:00', address: 'Masjid Raya', maps: 'https://maps.example/a', groom: 'Andi', bride: 'Sari', customer: 'Rina', post_title: 'Pesan Undangan', status: 'baru' },
+      { order_id: '33333333-3333-4333-8333-333333333333', kind: 'resepsi', event_date: isoDay(2), event_time: '11:00', address: 'Gedung Serbaguna', maps: null, groom: 'Andi', bride: 'Sari', customer: 'Rina', post_title: 'Pesan Undangan', status: 'baru' },
+      { order_id: '44444444-4444-4444-8444-444444444444', kind: 'akad', event_date: isoDay(30), event_time: null, address: null, maps: null, groom: 'Doni', bride: 'Rina', customer: null, post_title: 'Pesan 2', status: 'diproses' },
+    ],
+    audit: [
+      { id: 2, action: 'access.grant', target: '11111111-1111-4111-8111-111111111111', actor: 'admin', created_at: '2026-10-16T11:00:00Z', detail: {} },
+      { id: 1, action: 'user.create', target: '00000000-0000-4000-8000-000000000002', actor: 'admin', created_at: '2026-10-16T10:00:00Z', detail: {} },
+    ],
+    errors: [{ id: 1, source: 'server', status: 500, path: '/api/app/dashboard', message: 'Contoh error server', created_at: '2026-10-16T12:00:00Z', detail: { stack: 'Error: Contoh\n    at handler' } }],
+    waTemplates: { access: null, recap: null },
+    factors: [], pushSubs: [], clientErrors: [], ...opts }
   const token = fakeJwt(user.id, user.email || `${user.username}@akun.mdundig.invalid`)
 
   await page.route('https://supabase.mock/**', async (route) => {
@@ -61,7 +87,31 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
     }
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204 })
     if (url.pathname === '/auth/v1/recover') return json(route, {})
-    if (url.pathname === '/auth/v1/user') return json(route, { id: user.id, aud: 'authenticated', role: 'authenticated', email: user.email })
+    if (url.pathname === '/auth/v1/user') return json(route, { id: user.id, aud: 'authenticated', role: 'authenticated', email: user.email, factors: state.factors })
+    const factorPath = /^\/auth\/v1\/factors(?:\/([^/]+))?(?:\/(challenge|verify))?$/.exec(url.pathname)
+    if (factorPath) {
+      const method = route.request().method()
+      const [, id, op] = factorPath
+      if (!id && method === 'POST') {
+        const f = { id: `f${state.factors.length + 1}`, factor_type: 'totp' as const, status: 'unverified' as const, friendly_name: 'MDUNDIG' }
+        state.factors.push(f)
+        return json(route, { id: f.id, type: 'totp', friendly_name: f.friendly_name, totp: { qr_code: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#000"/></svg>', secret: 'JBSWY3DPEHPK3PXP', uri: 'otpauth://totp/MDUNDIG' } })
+      }
+      if (id && method === 'DELETE') { state.factors = state.factors.filter((f) => f.id !== id); state.mutations.push(`mfa.unenroll:${id}`); return json(route, { id }) }
+      if (id && op === 'challenge') return json(route, { id: 'challenge-1', type: 'totp', expires_at: Math.floor(Date.now() / 1000) + 300 })
+      if (id && op === 'verify') {
+        const body = route.request().postDataJSON() as { code?: string }
+        if (body?.code !== '123456') return json(route, { code: 'mfa_verification_failed', msg: 'Invalid TOTP code entered' }, 422)
+        state.factors = state.factors.map((f) => (f.id === id ? { ...f, status: 'verified' as const } : f))
+        state.mutations.push(`mfa.verify:${id}`)
+        return json(route, {
+          access_token: fakeJwt(user.id, user.email || `${user.username}@akun.mdundig.invalid`, 'aal2'), token_type: 'bearer', expires_in: 3600,
+          expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'refresh-uji-aal2',
+          user: { id: user.id, aud: 'authenticated', role: 'authenticated', email: user.email, factors: state.factors, app_metadata: {}, user_metadata: {}, created_at: '2026-10-01T00:00:00Z' },
+        })
+      }
+    }
+    if (url.pathname.startsWith('/realtime/')) return route.abort()
     return json(route, {}, 404)
   })
 
@@ -79,13 +129,57 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
       }
       return json(route, { data: { message: 'Username/email atau password salah.' } }, 401)
     }
-    if (req.headers().authorization !== `Bearer ${token}`) return json(route, { data: { message: 'Silakan masuk kembali.' } }, 401)
+    // Seperti server asli: token sah bila milik pengguna ini (token baru setelah verifikasi dua langkah juga diterima).
+    if (jwtClaims(req.headers().authorization).sub !== user.id) return json(route, { data: { message: 'Silakan masuk kembali.' } }, 401)
     if (state.delayMs) await new Promise((r) => setTimeout(r, state.delayMs))
     const isAdmin = role === 'admin'
     // Server sungguhan menolak pelanggan pada /api/app/admin/** — mock meniru perilaku tsb.
     if (path.startsWith('/api/app/admin/') && !isAdmin) return json(route, { data: { message: 'Halaman ini khusus admin platform.' } }, 403)
 
+    if (state.factors.some((f) => f.status === 'verified') && jwtClaims(req.headers().authorization).aal !== 'aal2' && path !== '/api/app/client-error') {
+      return json(route, { statusCode: 401, statusMessage: 'mfa_required', data: { message: 'Masukkan kode verifikasi dua langkah dari aplikasi authenticator.' } }, 401)
+    }
     if (path === '/api/app/me') return json(route, { ...user, role, created_at: '2026-10-01T00:00:00Z' })
+    if (path === '/api/app/admin/events') {
+      const from = url.searchParams.get('from') ?? '0000'
+      const to = url.searchParams.get('to') ?? '9999'
+      return json(route, { items: state.events.filter((e) => String(e.event_date) >= from && String(e.event_date) <= to) })
+    }
+    if (path === '/api/app/admin/audit') {
+      const action = url.searchParams.get('action')
+      const items = state.audit.filter((a) => !action || String(a.action).startsWith(`${action}.`))
+      return json(route, { items, total: items.length, page: 1, per_page: 30 })
+    }
+    if (path === '/api/app/admin/errors' && req.method() === 'DELETE') { const n = state.errors.length; state.errors = []; state.mutations.push('errors.clear'); return json(route, { deleted: n }) }
+    if (path === '/api/app/admin/errors') {
+      const src = url.searchParams.get('source')
+      const items = state.errors.filter((e) => !src || e.source === src)
+      return json(route, { items, total: items.length, page: 1, per_page: 30 })
+    }
+    if (path === '/api/app/admin/settings/whatsapp' && req.method() === 'PUT') {
+      const b = req.postDataJSON() as { access_template?: string | null; recap_template?: string | null }
+      if (typeof b.access_template === 'string' && !b.access_template.includes('{password}')) return json(route, { data: { message: 'Pesan akses akun wajib memuat {password}.' } }, 400)
+      if ('access_template' in b) state.waTemplates.access = b.access_template || null
+      if ('recap_template' in b) state.waTemplates.recap = b.recap_template || null
+      state.mutations.push('settings.whatsapp')
+      return json(route, { ok: true })
+    }
+    if (path === '/api/app/admin/settings/whatsapp') {
+      return json(route, { access_template: state.waTemplates.access, recap_template: state.waTemplates.recap, defaults: { access: DEFAULT_ACCESS, recap: DEFAULT_RECAP } })
+    }
+    const recapPath = /\/api\/app\/admin\/invitations\/([^/]+)\/recap$/.exec(path)
+    if (recapPath) {
+      const confirmed = state.reservations.filter((r) => r.invitation_id === recapPath[1] && r.status === 'confirmed')
+      const byGift = new Map<string, { gift: string; guests: string[] }>()
+      for (const r of confirmed) { const g = byGift.get(String(r.gift_id)) ?? { gift: String(r.gift_name), guests: [] }; g.guests.push(String(r.guest_name)); byGift.set(String(r.gift_id), g) }
+      const grant = state.grants.find((g) => g.invitation_id === recapPath[1])
+      const holderUser = grant ? [{ ...USERS.customer, whatsapp: '6281277778888' }, ...state.createdUsers].find((u) => u.id === grant.user_id) : null
+      return json(route, { title: 'Andi & Sari', website_name: 'Undangan Utama', total: confirmed.length, items: [...byGift.values()],
+        holder: holderUser ? { id: holderUser.id, username: holderUser.username, name: holderUser.display_name || holderUser.username, whatsapp: (holderUser as { whatsapp?: string | null }).whatsapp ?? null } : null })
+    }
+    if (path === '/api/app/client-error') { state.clientErrors.push(String((req.postDataJSON() as { message?: string }).message)); return json(route, { ok: true }, 202) }
+    if (path === '/api/app/push/subscribe' && req.method() === 'POST') { state.pushSubs.push(String((req.postDataJSON() as { endpoint?: string }).endpoint)); return json(route, { ok: true }, 201) }
+    if (path === '/api/app/push/subscribe' && req.method() === 'DELETE') { state.pushSubs = []; return json(route, { ok: true }) }
     if (path === '/api/app/dashboard') {
       const days = Number(url.searchParams.get('days') || 7)
       const today = new Date('2026-10-16T00:00:00Z')

@@ -1,4 +1,4 @@
-import { filledCount, orderSummary, type OrderEntry } from '../../../../../shared/orderSections'
+import { filledCount, orderSummary, type OrderEntry, type OrderMeta } from '../../../../../shared/orderSections'
 
 // Form Order — khusus admin platform (requireAdmin + RLS admin-only).
 export default defineEventHandler(async (event) => {
@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   const { page, size, from, to } = pageParams(event)
   const query = getQuery(event)
   let request = user.db.from('form_orders')
-    .select('id, website_id, post_id, post_title, element_id, fields, labels, status, source, created_at, websites(name)', { count: 'exact' })
+    .select('id, website_id, post_id, post_title, element_id, fields, labels, meta, status, source, created_at, websites(name)', { count: 'exact' })
   const website = optionalUuid(query.website)
   if (website) request = request.eq('website_id', website)
   const pattern = searchPattern(query.q)
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
       return {
         id: o.id, website_id: o.website_id, website_name: (o.websites as { name?: string } | null)?.name ?? '', post_id: o.post_id, post_title: o.post_title,
         status: o.status, source: o.source, created_at: o.created_at,
-        summary: orderSummary(entries), field_count: entries.length, filled_count: filledCount(entries),
+        summary: orderSummary(entries, 3, o.meta as OrderMeta | null), field_count: entries.length, filled_count: filledCount(entries),
       }
     }),
     total: count ?? 0, page, per_page: size,

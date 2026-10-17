@@ -346,6 +346,26 @@ Catatan: untuk pilihan (dropdown/radio/checkbox) buatan sendiri, plugin mengirim
 
 **Live**: commit terakhir terdeploy (status Vercel di GitHub: success). Log Supabase: tidak ada kueri gagal sejak perbaikan 5ab; 2 kueri 400 pada 06:24 UTC terjadi sebelum kolom `whatsapp_sent_at` diterapkan (sudah selesai).
 
+## 5ae. Pengembangan lanjutan: dashboard & plugin (17 Okt 2026)
+
+**Dashboard MDUNDIG**
+1. **Kalender Acara** (`/kalender`, admin): tanggal akad/resepsi/ngunduh mantu dari isi order (view `order_events`, hanya tanggal valid, order batal tidak ikut), daftar *Acara 14 hari ke depan*, kisi bulan (ponsel: titik penanda), rincian per tanggal + tautan peta & detail order. Data live: 3 acara dari order yang ada terbaca benar.
+2. **Notifikasi langsung** (Supabase Realtime, RLS per akun) — lonceng, halaman Notifikasi & Ringkasan langsung diperbarui; cadangan polling 60 detik. **PWA**: manifest, ikon (termasuk maskable & Apple), service worker (hanya push; tanpa cache data). **Push notification** (Web Push/VAPID) untuk order & reservasi baru — endpoint hanya layanan push resmi (cegah SSRF), langganan kedaluwarsa dihapus otomatis. Nonaktif sampai kunci VAPID diisi di Vercel.
+3. **Template pesan WhatsApp** (`/admin/pesan-whatsapp`): pesan akses & rekap reservasi bisa diubah, tombol sisip placeholder, pratinjau langsung, placeholder wajib dicek di browser & server; template bawaan menghasilkan pesan yang sama persis dengan sebelumnya. **Rekap reservasi** dikirim dari detail undangan ke pelanggan pemegang undangan.
+4. **Riwayat & Error** (`/admin/riwayat`): aktivitas admin dalam bahasa sehari-hari + filter; log error server (5xx) & browser 30 hari (tanpa query string/token), bisa dikosongkan.
+5. **Keamanan**: verifikasi dua langkah (TOTP) untuk admin — ditegakkan di **server** (sesi `aal2` wajib, fungsi `session_info`), halaman `/verifikasi`, aktif/nonaktif dari Profil. Batas percobaan login sudah ada sebelumnya. Pencatat error bawaan (tanpa layanan pihak ketiga).
+6. **Proksi gambar http://** (`/api/img`): hanya URL bertanda tangan HMAC dari server, DNS ke alamat privat ditolak, tanpa redirect, maks. 5 MB, raster saja (SVG ditolak), CSP sandbox.
+7. **Meta order dari plugin**: nama step & teks opsi disimpan di `form_orders.meta`; field yang dulu jatuh ke "Lainnya" kini memakai nama step, kode pilihan tampil sebagai teksnya (detail, PDF, CSV, ringkasan).
+
+**Plugin ApeironKit** (`wp-content/plugins/Apeiron`, belum di-commit)
+1. **Antrean kirim ulang** (`FormOrderOutbox`): bila API Form Order tidak dapat dihubungi/menolak sementara, pesanan disimpan di WordPress dan dikirim ulang otomatis lewat WP-Cron (5 m → 24 j, berhenti otomatis setelah 14 hari) dengan request_id sama (backend idempoten). Tamu tetap mendapat pesan berhasil. Data yang ditolak server / bentrok identitas tidak diantrekan. Status & tombol *Kirim ulang sekarang* di Form Order → Penyimpanan (nonce + `manage_options`).
+2. **Kirim teks opsi & nama step** (`option_labels`, `field_sections`, objek JSON; server lama mengabaikannya).
+3. **Peringatan editor** Daftar Hadiah bila foto hadiah memakai `http://` (khusus editor Elementor, tidak tampil ke tamu).
+
+**Database live** (diterapkan & diverifikasi): `mdundig_order_meta_events`, `mdundig_settings_errors_push`, `mdundig_session_mfa`. Advisor: tambahan peringatan `session_info` SECURITY DEFINER — disengaja (hanya mengembalikan info sesi pemanggil sendiri).
+
+**Uji**: DB +7 (meta, kalender, pengaturan, log error, push, Realtime, MFA), unit +16 (proksi gambar & IP privat, endpoint push, template, meta), e2e +13 skenario × 3 ukuran layar (kalender, riwayat, template, rekap, 2FA penuh, push, meta order, laporan error, PWA), integrasi **kelas PHP plugin asli → server build → PostgreSQL** (meta tersimpan, bentrok tidak dikirim ulang), self-check plugin (antrean, meta, peringatan editor). Semua lulus.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

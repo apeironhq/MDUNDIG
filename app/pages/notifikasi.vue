@@ -12,6 +12,9 @@ const kind = ref('')
 const filters = computed(() => ({ unread: view.value === 'unread' ? '1' : undefined, kind: kind.value || undefined }))
 const list = usePagedList<NotificationItem>('/api/app/notifications', filters, 20)
 onMounted(async () => { await list.load(); void refresh() })
+// Notifikasi baru (Realtime) → daftar langsung diperbarui.
+const { tick } = useNotifications()
+watch(tick, () => { void list.load() })
 
 async function open(n: NotificationItem) {
   if (!n.read_at) {

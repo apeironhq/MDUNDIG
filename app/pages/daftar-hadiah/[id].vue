@@ -70,8 +70,8 @@ onBeforeUnmount(() => accessRo?.disconnect())
 // Gambar hadiah diambil langsung dari WordPress. Bila gagal dimuat (mis. http:// di dashboard HTTPS, atau situs
 // lokal seperti http://aperion.local yang hanya ada di komputer sendiri) tampilkan ikon, bukan gambar rusak.
 const failedImg = reactive(new Set<string>())
-const insecureImages = computed(() => import.meta.client && window.location.protocol === 'https:'
-  && activeGifts.value.some((g) => g.image_url.startsWith('http://')))
+// Gambar http:// sudah dilewatkan proksi server; catatan hanya muncul bila ada gambar yang tetap gagal dimuat.
+const insecureImages = computed(() => activeGifts.value.some((g) => g.image_url && failedImg.has(g.id)))
 const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g.id, name: g.active ? g.name : `${g.name} (dihapus)` })))
 </script>
 
@@ -141,7 +141,7 @@ const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g
                 {{ showAllGifts ? 'Tampilkan lebih sedikit' : `Tampilkan semua ${activeGifts.length} hadiah` }}
               </button>
             </div>
-            <p v-if="insecureImages" class="catalog-note text-caption" data-testid="insecure-images">Sebagian gambar berasal dari alamat <span class="text-mono">http://</span> sehingga diblokir browser di dashboard HTTPS. Gambar akan tampil setelah website WordPress memakai HTTPS dan dapat diakses publik.</p>
+            <p v-if="insecureImages" class="catalog-note text-caption" data-testid="insecure-images">Sebagian gambar tidak dapat dimuat dari website WordPress (alamat lokal/tidak publik atau gambar sudah dihapus). Gambar akan tampil setelah website dapat diakses publik.</p>
             <p v-if="inactiveGifts.length" class="catalog-note text-caption">{{ inactiveGifts.length }} hadiah telah dihapus dari katalog. Riwayat reservasinya tetap tersimpan.</p>
           </template>
         </section>

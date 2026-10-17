@@ -240,6 +240,42 @@ export function validateFormOrderSubmission(body: Json): FormOrderSubmission {
   return body as unknown as FormOrderSubmission
 }
 
+export interface FormOrderMeta {
+  sections?: Record<string, string>
+  options?: Record<string, Record<string, string>>
+}
+
+/**
+ * Meta opsional dari plugin versi baru: `field_sections` (nama step per field) & `option_labels` (teks tampilan opsi).
+ * Hanya bagian yang valid yang disimpan; data meta yang rusak dibuang TANPA menolak order (order tidak boleh hilang).
+ */
+export function sanitizeFormOrderMeta(body: Json, fields: Record<string, unknown>): FormOrderMeta {
+  const meta: FormOrderMeta = {}
+  const short = (v: unknown, max: number) => (typeof v === 'string' && v.trim() !== '' && cpLength(v) <= max && !RE.control.test(v) ? v.trim() : null)
+  if (isObject(body.field_sections)) {
+    const sections: Record<string, string> = {}
+    for (const [key, value] of Object.entries(body.field_sections).slice(0, 400)) {
+      const title = short(value, 120)
+      if (RE.fieldKey.test(key) && key in fields && title) sections[key] = title
+    }
+    if (Object.keys(sections).length) meta.sections = sections
+  }
+  if (isObject(body.option_labels)) {
+    const options: Record<string, Record<string, string>> = {}
+    for (const [key, map] of Object.entries(body.option_labels).slice(0, 200)) {
+      if (!RE.fieldKey.test(key) || !(key in fields) || !isObject(map)) continue
+      const clean: Record<string, string> = {}
+      for (const [code, label] of Object.entries(map).slice(0, 50)) {
+        const text = short(label, 200)
+        if (cpLength(code) <= 512 && text) clean[code] = text
+      }
+      if (Object.keys(clean).length) options[key] = clean
+    }
+    if (Object.keys(options).length) meta.options = options
+  }
+  return meta
+}
+
 /** Pastikan respons stok mencakup tepat seluruh hadiah request (tanpa asing/duplikat/hilang). */
 export function assertStockMatchesCatalog(stock: unknown, gifts: CatalogGift[]): asserts stock is Array<{
   gift_id: string; initial_quantity: number; available_quantity: number; availability: string

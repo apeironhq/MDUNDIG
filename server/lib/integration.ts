@@ -7,7 +7,7 @@ import { createHmac } from 'node:crypto'
 import {
   ContractError, DB_ERROR_CODES, DH_OPERATIONS, DH_SERVICE, DH_VERSION, ERROR_STATUS, FO_OPERATIONS, FO_SERVICE, FO_VERSION,
   RE, assertStockMatchesCatalog, echoFields, isObject, normalizeSiteUrl, validateCatalog, validateEnvelope,
-  validateFormOrderEnvelope, validateFormOrderSubmission, validateOffset, validateReserve,
+  validateFormOrderEnvelope, validateFormOrderSubmission, sanitizeFormOrderMeta, validateOffset, validateReserve,
 } from './contract'
 
 export interface RpcError { code?: string; message: string }
@@ -158,6 +158,7 @@ async function process(
       p: {
         post_id: submission.post_id, post_title: submission.post_title, document_id: submission.document_id,
         element_id: submission.element_id, request_id: submission.request_id, fields: submission.fields, labels: submission.labels,
+        meta: sanitizeFormOrderMeta(json, submission.fields),
       },
     })
     if (!isObject(stored) || typeof stored.order_id !== 'string' || typeof stored.timestamp !== 'string') {

@@ -15,5 +15,6 @@ export default defineEventHandler(async (event) => {
     .select('id, registry_id, gift_key, name, description, image_url, purchase_url, initial_quantity, capacity, manual_status, active, position, reserved_quantity, available_quantity')
     .eq('invitation_id', id).order('active', { ascending: false }).order('position')
   if (gifts.error) throw dbError(gifts.error)
-  return { invitation, registries: registries.data, gifts: gifts.data }
+  // Gambar http:// dilewatkan proksi bertanda tangan agar tetap tampil di dashboard HTTPS.
+  return { invitation, registries: registries.data, gifts: proxyImages(gifts.data ?? []) }
 })

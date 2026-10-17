@@ -76,6 +76,13 @@ Aplikasi ini berfungsi sebagai penyimpanan data widget (katalog, stok, reservasi
 
 Pelanggan hanya dapat melihat dan mengunduh laporan (PDF/CSV) Daftar Hadiah undangannya.
 
+## Fitur tambahan (opsional)
+
+- **Push notification ke ponsel/komputer** (order & reservasi baru muncul walau dashboard ditutup): jalankan sekali `node scripts/generate-vapid.mjs mailto:email-anda@domain.com` (kunci ditulis ke `.env`, tidak dicetak), lalu salin `NUXT_PUBLIC_VAPID_PUBLIC_KEY`, `NUXT_VAPID_PRIVATE_KEY`, `NUXT_VAPID_SUBJECT` ke Vercel → Settings → Environment Variables dan redeploy. Tiap pengguna mengaktifkannya di **Profil → Notifikasi di perangkat ini**. Di iPhone/iPad: pasang dulu ke Layar Utama (Safari → Bagikan → Tambahkan ke Layar Utama). Tanpa kunci, fitur ini nonaktif dan aplikasi tetap berjalan normal.
+- **Pasang sebagai aplikasi (PWA):** di ponsel buka MDUNDIG → menu browser → *Install / Tambahkan ke Layar Utama*.
+- **Verifikasi dua langkah admin:** Profil → *Aktifkan verifikasi dua langkah* → pindai QR dengan Google/Microsoft Authenticator. Fitur TOTP aktif bawaan di Supabase (Authentication → Multi-Factor). Setelah aktif, server menolak semua API sampai kode dimasukkan saat login.
+- **Notifikasi langsung (Realtime)**, **kalender acara**, **riwayat & log error**, **template pesan WhatsApp**, **rekap reservasi via WhatsApp**, dan **proksi gambar http://** langsung aktif tanpa pengaturan tambahan.
+
 ## Domain & subdomain
 
 - **Aplikasi MDUNDIG** tidak terikat ke alamat `*.vercel.app`. Pakai domain atau subdomain sendiri (mis. `data.domainanda.com`) lewat Vercel → Settings → Domains, atau jalankan di server Node mana pun (`npm run build` lalu `node .output/server/index.mjs`, atau preset Nitro lain). Syarat dari plugin: **HTTPS publik, tanpa port, bukan localhost/IP**. URL API di menu Koneksi, tautan login di pesan WhatsApp, dan tautan reset password **otomatis mengikuti domain yang sedang dibuka** bila `NUXT_PUBLIC_APP_URL` dikosongkan (disarankan). Bila diisi, nilai itu yang dipakai (hanya HTTPS publik; localhost/http diabaikan) — ubah juga saat pindah domain.

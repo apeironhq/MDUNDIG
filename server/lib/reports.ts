@@ -1,4 +1,4 @@
-import { displayValue, groupOrderEntries, isEmptyValue } from '../../shared/orderSections'
+import { displayValue, groupOrderEntries, isEmptyValue, type OrderMeta } from '../../shared/orderSections'
 import type { ReportCard, ReportColumn, ReportMeta } from './pdf'
 
 /** Nomor WhatsApp tersimpan (62…) → format lokal yang mudah dibaca: 0812-3456-7890. */
@@ -61,7 +61,7 @@ export function reservationPdfParts(rows: ReservationExportRow[], opts: { genera
 
 export interface OrderExportRow {
   created_at: string; post_title: string; post_id: number | null; status: string; site: string
-  fields: Record<string, unknown>; labels: Record<string, string>
+  fields: Record<string, unknown>; labels: Record<string, string>; meta?: OrderMeta | null
 }
 export const ORDER_STATUS: Record<string, string> = { baru: 'Baru', diproses: 'Diproses', selesai: 'Selesai', batal: 'Batal' }
 
@@ -69,7 +69,7 @@ export const ORDER_STATUS: Record<string, string> = { baru: 'Baru', diproses: 'D
 export function orderCards(orders: OrderExportRow[]): ReportCard[] {
   return orders.map((o, i) => {
     const entries = Object.keys(o.fields).map((key) => ({ key, label: o.labels[key] || key, value: o.fields[key] as string | string[] }))
-    const sections = groupOrderEntries(entries)
+    const sections = groupOrderEntries(entries, o.meta)
       .map((s) => ({ title: s.title, fields: s.fields.filter((f) => !isEmptyValue(f.value)).map((f) => ({ label: f.group ? `${f.group} — ${f.field}` : f.field, value: displayValue(f.value) })) }))
       .filter((s) => s.fields.length)
     return {

@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { UserPlus, Users, X } from 'lucide-vue-next'
+import { resolveAppBase } from '../../shared/appUrl'
+import { buildRecapMessage } from '../../shared/whatsapp'
+import WhatsAppIcon from './WhatsAppIcon.vue'
 
 // Khusus admin: siapa yang dapat melihat satu undangan (akses eksplisit + pemetaan pemilik), versi ringkas untuk kolom samping.
 const props = defineProps<{ invitationId: string }>()
@@ -47,6 +50,33 @@ const candidates = computed(() => users.value.filter((u) => !grantedIds.value.ha
 // Satu akun = satu undangan: akun yang sudah memegang undangan lain tidak bisa dipilih.
 const available = computed(() => candidates.value.filter((u) => !u.access_count))
 const total = computed(() => (data.value?.explicit.length ?? 0) + (data.value?.mapped.length ?? 0))
+
+// ---- Kirim rekap reservasi ke pelanggan pemegang undangan (WhatsApp).
+interface Recap { title: string; website_name: string | null; total: number; items: Array<{ gift: string; guests: string[] }>; holder: { username: string | null; name: string; whatsapp: string | null } | null }
+const recapOpen = ref(false)
+const recapLoading = ref(false)
+const recap = ref<Recap | null>(null)
+const recapMessage = ref('')
+const config = useRuntimeConfig()
+const { templates, load: loadTemplates } = useWaTemplates()
+async function openRecap() {
+  recapOpen.value = true
+  recapLoading.value = true
+  try {
+    const [r] = await Promise.all([api.request<Recap>(`/api/app/admin/invitations/${props.invitationId}/recap`), loadTemplates()])
+    recap.value = r
+    const base = resolveAppBase(config.public.appUrl, window.location.origin).base
+    recapMessage.value = buildRecapMessage({
+      name: r.holder?.name ?? '', invitationTitle: r.title, total: r.total, items: r.items, sender: r.website_name,
+      loginUrl: r.holder?.username ? `${base}/login?u=${encodeURIComponent(r.holder.username)}` : `${base}/login`,
+    }, templates.value.recap)
+  } catch (err) {
+    recapOpen.value = false
+    toast.error(errorMessage(err, 'Rekap reservasi gagal dimuat.'))
+  } finally {
+    recapLoading.value = false
+  }
+}
 
 async function grant() {
   if (!selected.value || busy.value) return
@@ -114,6 +144,7 @@ async function revoke(userId: string) {
           </li>
         </ul>
       </div>
+      <button v-if="total" class="btn btn-secondary btn-sm self-start" type="button" data-testid="recap-open" @click="openRecap"><WhatsAppIcon :size="15" /> Kirim rekap reservasi</button>
       <p v-if="total" class="text-caption" data-testid="access-full">Satu undangan hanya untuk satu akun pelanggan. Cabut akses di atas untuk menggantinya dengan akun lain.</p>
       <form v-else class="grant" @submit.prevent="grant">
         <p class="text-caption">Satu undangan hanya untuk satu akun, dan satu akun hanya untuk satu undangan. Akun yang sudah punya undangan tidak dapat dipilih.</p>
@@ -127,6 +158,10 @@ async function revoke(userId: string) {
         <AsyncButton type="submit" :loading="busy" :disabled="!selected"><UserPlus :size="16" /> Beri akses</AsyncButton>
       </form>
     </div>
+    <ModalDialog :open="recapOpen" :icon="WhatsAppIcon" title="Kirim rekap reservasi" :subtitle="recap ? `${recap.title} · ${recap.total} reservasi${recap.holder ? ` · untuk ${recap.holder.name}` : ''}` : 'Memuat rekap…'" @close="recapOpen = false">
+      <LoadingRows v-if="recapLoading" :rows="3" />
+      <WhatsAppComposer v-else-if="recap" v-model="recapMessage" :whatsapp="recap.holder?.whatsapp ?? null" />
+    </ModalDialog>
   </section>
 </template>
 

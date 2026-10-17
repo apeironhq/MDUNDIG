@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, ClipboardList, Gift, Globe, LayoutDashboard, Link2, LogOut, User, Users, X } from 'lucide-vue-next'
+import { Bell, CalendarDays, ClipboardList, Gift, Globe, History, LayoutDashboard, Link2, LogOut, MessageSquareText, User, Users, X } from 'lucide-vue-next'
 
 defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -10,12 +10,14 @@ const auth = useAuth()
 const modules = computed(() => [
   { to: '/', label: 'Ringkasan', icon: LayoutDashboard },
   { to: '/daftar-hadiah', label: 'Daftar Hadiah', icon: Gift },
-  ...(auth.isAdmin.value ? [{ to: '/order-undangan', label: 'Order Undangan', icon: ClipboardList }] : []),
+  ...(auth.isAdmin.value ? [{ to: '/order-undangan', label: 'Order Undangan', icon: ClipboardList }, { to: '/kalender', label: 'Kalender Acara', icon: CalendarDays }] : []),
 ])
 const settings = [
   { to: '/admin/website', label: 'Website', icon: Globe },
   { to: '/admin/koneksi', label: 'Koneksi', icon: Link2 },
   { to: '/admin/pengguna', label: 'Pengguna & Akses', icon: Users },
+  { to: '/admin/pesan-whatsapp', label: 'Pesan WhatsApp', icon: MessageSquareText },
+  { to: '/admin/riwayat', label: 'Riwayat & Error', icon: History },
 ]
 const account = [{ to: '/notifikasi', label: 'Notifikasi', icon: Bell }, { to: '/profil', label: 'Profil', icon: User }]
 const { unread } = useNotifications()

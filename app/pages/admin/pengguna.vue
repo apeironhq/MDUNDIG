@@ -40,7 +40,7 @@ async function loadInvitations(force = false) {
     invitationsLoading.value = false
   }
 }
-onMounted(() => { void users.load() })
+onMounted(() => { void users.load(); void useWaTemplates().load() })
 
 // Akses 1:1: undangan yang sudah dipegang akun lain (akses eksplisit atau pemetaan otomatis) tidak bisa dipilih.
 function takenFor(exceptUserId: string | null): Record<string, string> {

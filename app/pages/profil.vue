@@ -111,6 +111,10 @@ async function savePassword() {
         </form>
       </section>
     </div>
+    <div class="grid gap-4" :class="{ 'lg:grid-cols-2': auth.isAdmin.value }">
+      <MfaCard v-if="auth.isAdmin.value" />
+      <PushCard />
+    </div>
     <!-- Ponsel: tombol Keluar di Profil (pelanggan tidak memakai menu samping di ponsel). -->
     <button class="btn btn-secondary logout-phone" type="button" @click="logout"><LogOut :size="16" /> Keluar</button>
   </div>

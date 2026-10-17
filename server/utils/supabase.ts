@@ -51,6 +51,8 @@ export interface SessionUser {
   id: string
   email: string
   isAdmin: boolean
+  /** Verifikasi dua langkah (TOTP) sudah aktif untuk akun ini. */
+  mfaEnrolled?: boolean
   db: SupabaseClient
 }
 
@@ -70,9 +72,15 @@ export async function requireUser(event: H3Event): Promise<SessionUser> {
   if (error || typeof sub !== 'string' || data?.claims?.role !== 'authenticated') {
     throw createError({ statusCode: 401, statusMessage: 'unauthorized', data: { message: 'Sesi berakhir. Silakan masuk kembali.' } })
   }
-  const { data: admin, error: adminError } = await db.from('platform_admins').select('user_id').eq('user_id', sub).maybeSingle()
-  if (adminError) throw dbError(adminError)
-  return { id: sub, email: String(data?.claims?.email ?? ''), isAdmin: !!admin, db }
+  // Satu panggilan: peran admin + status verifikasi dua langkah. Akun yang sudah mengaktifkan verifikasi dua langkah
+  // wajib memakai sesi aal2 (kode authenticator sudah dimasukkan) — ditegakkan di server untuk semua API.
+  const { data: info, error: infoError } = await db.rpc('session_info')
+  if (infoError) throw dbError(infoError)
+  const session = (info ?? {}) as { is_admin?: boolean; mfa_enrolled?: boolean; aal?: string }
+  if (session.mfa_enrolled && session.aal !== 'aal2') {
+    throw createError({ statusCode: 401, statusMessage: 'mfa_required', data: { message: 'Masukkan kode verifikasi dua langkah dari aplikasi authenticator.' } })
+  }
+  return { id: sub, email: String(data?.claims?.email ?? ''), isAdmin: session.is_admin === true, mfaEnrolled: session.mfa_enrolled === true, db }
 }
 
 export async function requireAdmin(event: H3Event): Promise<SessionUser> {

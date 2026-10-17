@@ -5,7 +5,7 @@
  * - label kembar diberi konteks "Bagian: Label" lalu "(2)"; nilai pilihan = kode opsi; maks. 200 field.
  */
 import { describe, expect, it } from 'vitest'
-import { ContractError, validateFormOrderSubmission } from '../../server/lib/contract'
+import { ContractError, sanitizeFormOrderMeta, validateFormOrderSubmission } from '../../server/lib/contract'
 import { groupOrderEntries, orderSummary } from '../../shared/orderSections'
 
 const code = (fn: () => unknown) => { try { fn(); return 'ok' } catch (e) { return e instanceof ContractError ? e.code : 'other' } }
@@ -82,5 +82,26 @@ describe('kompatibilitas widget Form Order', () => {
     expect(code(() => validateFormOrderSubmission({ ...base, fields: { ...big, field_200: 'x' }, labels: bigLabels }))).toBe('invalid_request')
     // Kunci maksimal plugin (64 karakter, sanitize_key) diterima.
     expect(code(() => validateFormOrderSubmission({ ...base, fields: { ['k'.repeat(64)]: 'a' }, labels: { ['k'.repeat(64)]: 'A' } }))).toBe('ok')
+  })
+
+  it('meta plugin baru: nama step mengganti "Lainnya", teks opsi menggantikan kodenya; meta rusak dibuang tanpa menolak order', () => {
+    const meta = sanitizeFormOrderMeta({
+      field_sections: { field_91ab7d: 'Paket & Tema', music_title: 'Tambahan', tidak_ada: 'X', field_8f2c1a: '' },
+      option_labels: { field_8f2c1a: { gold: 'Paket Gold', musik: 'Musik latar' }, invitation_side: { pria: 'Pihak Pria' }, rusak: 'bukan-objek' },
+    }, fields)
+    expect(meta).toEqual({
+      sections: { field_91ab7d: 'Paket & Tema', music_title: 'Tambahan' },
+      options: { field_8f2c1a: { gold: 'Paket Gold', musik: 'Musik latar' }, invitation_side: { pria: 'Pihak Pria' } },
+    })
+    const g = groupOrderEntries(entries, meta)
+    expect(g.find((s) => s.title === 'Paket & Tema')!.fields.map((f) => f.key).sort()).toEqual(['field_77aa01', 'field_91ab7d'])
+    expect(g.find((s) => s.title === 'Tambahan')!.fields.map((f) => f.key)).toContain('music_title')
+    expect(g.flatMap((s) => s.fields).find((f) => f.key === 'field_8f2c1a')!.value).toEqual(['Paket Gold', 'Musik latar'])
+    expect(g.flatMap((s) => s.fields).find((f) => f.key === 'invitation_side')!.value).toBe('Pihak Pria')
+    // Bagian terstruktur (Pria, Akad, Cerita Cinta, Rekening) tidak ditimpa nama step.
+    expect(groupOrderEntries(entries, { sections: { groom_full_name: 'Mempelai Pria', love_meeting_title: 'Cerita Cinta' } }).map((s) => s.title)).toContain('Pria')
+    // Meta sama sekali tidak valid → kosong, order tetap diterima.
+    expect(sanitizeFormOrderMeta({ field_sections: 'x', option_labels: [1, 2] }, fields)).toEqual({})
+    expect(code(() => validateFormOrderSubmission({ ...base, field_sections: 'x', option_labels: 5 }))).toBe('ok')
   })
 })

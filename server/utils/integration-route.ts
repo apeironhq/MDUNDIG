@@ -24,5 +24,17 @@ export async function integrationRoute(event: H3Event, module: Module) {
     'x-content-type-options': 'nosniff',
   })
   if (result.status === 405) setResponseHeader(event, 'allow', 'POST')
+  // Push notification untuk order / reservasi baru (bukan duplikat). Dikirim setelah respons; tidak memperlambat plugin.
+  const data = (result.body as { data?: Record<string, unknown> | null } | null)?.data
+  const push = module === 'form_order' && result.status === 201 && typeof data?.order_id === 'string'
+    ? pushForNotifications({ order_id: data.order_id })
+    : module === 'daftar_hadiah' && typeof data?.reservation_id === 'string' && data.already_reserved !== true
+      ? pushForNotifications({ reservation_id: data.reservation_id })
+      : null
+  if (push) {
+    const task = push.catch((err) => console.error(JSON.stringify({ scope: 'push', message: String((err as Error)?.message ?? err).slice(0, 120) })))
+    if (event.waitUntil) event.waitUntil(task)
+    else await task
+  }
   return result.body
 }

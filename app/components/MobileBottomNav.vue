@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, ChevronRight, ClipboardList, Gift, Globe, LayoutDashboard, LayoutGrid, Link2, ListChecks, LogOut, User, Users, X } from 'lucide-vue-next'
+import { Bell, CalendarDays, ChevronRight, ClipboardList, Gift, Globe, History, LayoutDashboard, LayoutGrid, Link2, ListChecks, LogOut, MessageSquareText, User, Users, X } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
 // Menu bawah ponsel (< 768px). Kapsul mengambang dengan "punuk" melengkung landai yang bergeser ke menu aktif;
@@ -24,10 +24,15 @@ const adminItems: NavItem[] = [
   { to: '/notifikasi', label: 'Notifikasi', icon: Bell },
 ]
 const moreGroups: Array<{ title: string; items: NavItem[] }> = [
+  { title: 'Data', items: [
+    { to: '/kalender', label: 'Kalender Acara', icon: CalendarDays, desc: 'Akad, resepsi & ngunduh mantu dari order' },
+  ] },
   { title: 'Pengaturan', items: [
     { to: '/admin/website', label: 'Website', icon: Globe, desc: 'Website WordPress yang terhubung' },
     { to: '/admin/koneksi', label: 'Koneksi', icon: Link2, desc: 'URL API & Token Website untuk plugin' },
     { to: '/admin/pengguna', label: 'Pengguna & Akses', icon: Users, desc: 'Akun pelanggan & undangan yang boleh dilihat' },
+    { to: '/admin/pesan-whatsapp', label: 'Pesan WhatsApp', icon: MessageSquareText, desc: 'Template pesan akses & rekap reservasi' },
+    { to: '/admin/riwayat', label: 'Riwayat & Error', icon: History, desc: 'Aktivitas admin & catatan error sistem' },
   ] },
   { title: 'Akun', items: [
     { to: '/profil', label: 'Profil', icon: User, desc: 'Data akun & ganti password' },

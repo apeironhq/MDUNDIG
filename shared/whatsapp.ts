@@ -30,30 +30,89 @@ export interface AccessMessageInput {
   sender?: string | null
 }
 
+// ---- Template pesan (bisa diubah admin di menu Pesan WhatsApp). Placeholder diganti saat pesan dibuat.
+export const ACCESS_PLACEHOLDERS = ['nama', 'username', 'password', 'link_login', 'undangan', 'pengirim'] as const
+export const RECAP_PLACEHOLDERS = ['nama', 'undangan', 'jumlah_reservasi', 'daftar_hadiah', 'link_login', 'pengirim'] as const
+export const ACCESS_REQUIRED = ['username', 'password', 'link_login'] as const
+export const RECAP_REQUIRED = ['daftar_hadiah'] as const
+export const TEMPLATE_MAX = 3000
+
+export const DEFAULT_ACCESS_TEMPLATE = [
+  'Halo, *{nama}* 👋',
+  '',
+  'Terima kasih telah mempercayakan undangan digital Anda kepada kami. Berikut akun untuk melihat *Daftar Hadiah* undangan {undangan}:',
+  '',
+  '👤 *Username:* {username}',
+  '🔑 *Password:* {password}',
+  '',
+  '🔗 *Masuk di sini:*',
+  '{link_login}',
+  '',
+  'Setelah masuk, Anda dapat melihat hadiah yang dipilih tamu beserta ucapannya, dan mengunduh laporannya (PDF/CSV).',
+  '',
+  '🔒 Demi keamanan, mohon simpan pesan ini dan jangan bagikan kepada orang lain. Password dapat diganti kapan saja di menu *Profil* setelah masuk.',
+  '',
+  'Terima kasih 🙏',
+  '{pengirim}',
+].join('\n')
+
+export const DEFAULT_RECAP_TEMPLATE = [
+  'Halo, *{nama}* 👋',
+  '',
+  'Berikut rekap *Daftar Hadiah* undangan {undangan} sampai hari ini: *{jumlah_reservasi} reservasi*.',
+  '',
+  '{daftar_hadiah}',
+  '',
+  'Rincian lengkap beserta ucapan tamu dapat dilihat dan diunduh (PDF/CSV) di sini:',
+  '{link_login}',
+  '',
+  'Terima kasih 🙏',
+  '{pengirim}',
+].join('\n')
+
+/** Placeholder wajib yang tidak ada di template (kosong = template sah). */
+export function missingPlaceholders(template: string, required: readonly string[]): string[] {
+  return required.filter((p) => !template.includes(`{${p}}`))
+}
+
+/** Ganti {placeholder}; baris yang menjadi kosong di akhir pesan dipangkas. Placeholder tak dikenal dibiarkan apa adanya. */
+export function renderTemplate(template: string, values: Record<string, string>): string {
+  return template.replace(/\{([a-z_]+)\}/g, (all, key: string) => (key in values ? values[key]! : all)).replace(/\s+$/, '')
+}
+
 /** Pesan akses untuk pelanggan: sapaan, data akun, tautan masuk, panduan singkat, pengingat keamanan. */
-export function buildAccessMessage(i: AccessMessageInput): string {
-  const name = i.name.trim() || i.username
-  const lines = [
-    `Halo, *${name}* 👋`,
-    '',
-    i.invitationTitle
-      ? `Terima kasih telah mempercayakan undangan digital Anda kepada kami. Berikut akun untuk melihat *Daftar Hadiah* undangan *${i.invitationTitle}*:`
-      : 'Terima kasih telah mempercayakan undangan digital Anda kepada kami. Berikut akun untuk melihat *Daftar Hadiah* undangan Anda:',
-    '',
-    `👤 *Username:* ${i.username}`,
-    i.password ? `🔑 *Password:* ${i.password}` : '🔑 *Password:* sama seperti yang sudah kami berikan sebelumnya',
-    '',
-    '🔗 *Masuk di sini:*',
-    i.loginUrl,
-    '',
-    'Setelah masuk, Anda dapat melihat hadiah yang dipilih tamu beserta ucapannya, dan mengunduh laporannya (PDF/CSV).',
-    '',
-    '🔒 Demi keamanan, mohon simpan pesan ini dan jangan bagikan kepada orang lain. Password dapat diganti kapan saja di menu *Profil* setelah masuk.',
-    '',
-    'Terima kasih 🙏',
-  ]
-  if (i.sender?.trim()) lines.push(`*${i.sender.trim()}*`)
-  return lines.join('\n')
+export function buildAccessMessage(i: AccessMessageInput, template?: string | null): string {
+  return renderTemplate(template?.trim() ? template : DEFAULT_ACCESS_TEMPLATE, {
+    nama: i.name.trim() || i.username,
+    username: i.username,
+    password: i.password || 'sama seperti yang sudah kami berikan sebelumnya',
+    link_login: i.loginUrl,
+    undangan: i.invitationTitle ? `*${i.invitationTitle}*` : 'Anda',
+    pengirim: i.sender?.trim() ? `*${i.sender.trim()}*` : '',
+  })
+}
+
+export interface RecapInput {
+  name: string
+  invitationTitle?: string | null
+  total: number
+  items: Array<{ gift: string; guests: string[] }>
+  loginUrl: string
+  sender?: string | null
+}
+
+/** Rekap reservasi untuk mempelai: satu baris per hadiah (maks. 30 baris agar tautan WhatsApp tidak terlalu panjang). */
+export function buildRecapMessage(i: RecapInput, template?: string | null): string {
+  const lines = i.items.slice(0, 30).map((it) => `🎁 *${it.gift}* — ${it.guests.length ? it.guests.join(', ') : '-'}`)
+  if (i.items.length > 30) lines.push(`…dan ${i.items.length - 30} hadiah lainnya`)
+  return renderTemplate(template?.trim() ? template : DEFAULT_RECAP_TEMPLATE, {
+    nama: i.name.trim() || 'Bapak/Ibu',
+    undangan: i.invitationTitle ? `*${i.invitationTitle}*` : 'Anda',
+    jumlah_reservasi: String(i.total),
+    daftar_hadiah: lines.length ? lines.join('\n') : 'Belum ada hadiah yang dipilih tamu.',
+    link_login: i.loginUrl,
+    pengirim: i.sender?.trim() ? `*${i.sender.trim()}*` : '',
+  })
 }
 
 /** Tautan wa.me yang membuka chat ke nomor tersebut dengan pesan terisi. */

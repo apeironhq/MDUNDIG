@@ -2,10 +2,11 @@
 import { Bell, BellOff } from 'lucide-vue-next'
 import type { NotificationItem } from '~/composables/useNotifications'
 
-// Lonceng di topbar: angka belum dibaca (diperbarui tiap 30 detik saat tab terlihat) + panel 6 notifikasi terbaru.
+// Lonceng di topbar: angka belum dibaca (seketika lewat Realtime; cadangan tiap 60 detik saat tab terlihat) + panel 6 notifikasi terbaru.
 const api = useApi()
 const toast = useToast()
-const { unread, refresh, markRead } = useNotifications()
+const { unread, tick, refresh, markRead, startRealtime, stopRealtime } = useNotifications()
+const auth = useAuth()
 const open = ref(false)
 const loading = ref(false)
 const items = ref<NotificationItem[]>([])
@@ -46,12 +47,18 @@ function onDocDown(e: PointerEvent) { if (open.value && root.value && !root.valu
 function onKey(e: KeyboardEvent) { if (open.value && e.key === 'Escape') { open.value = false; button.value?.focus() } }
 onMounted(() => {
   void refresh()
-  timer = setInterval(() => { if (!document.hidden) void refresh() }, 30_000)
+  startRealtime()
+  timer = setInterval(() => { if (!document.hidden) void refresh() }, 60_000)
   document.addEventListener('visibilitychange', onVisible)
   document.addEventListener('pointerdown', onDocDown)
   document.addEventListener('keydown', onKey)
 })
+// Akun berganti (keluar/masuk) → langganan Realtime mengikuti akun aktif.
+watch(() => auth.me.value?.id, (id) => { if (id) startRealtime(); else stopRealtime() })
+// Panel terbuka saat notifikasi baru datang → muat ulang daftar terbaru.
+watch(tick, () => { if (open.value) void loadLatest() })
 onBeforeUnmount(() => {
+  stopRealtime()
   clearInterval(timer)
   document.removeEventListener('visibilitychange', onVisible)
   document.removeEventListener('pointerdown', onDocDown)

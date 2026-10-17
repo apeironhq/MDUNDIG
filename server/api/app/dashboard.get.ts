@@ -5,5 +5,8 @@ export default defineEventHandler(async (event) => {
   const days = Number(getQuery(event).days)
   const { data, error } = await user.db.rpc('dashboard_stats', { p_days: [7, 14, 30, 90].includes(days) ? days : 7 })
   if (error) throw dbError(error)
-  return data
+  // Gambar http:// hadiah terpopuler dilewatkan proksi bertanda tangan.
+  const stats = (data ?? {}) as { top_gifts?: Array<{ image_url?: string | null }> }
+  if (Array.isArray(stats.top_gifts)) stats.top_gifts = proxyImages(stats.top_gifts)
+  return stats
 })

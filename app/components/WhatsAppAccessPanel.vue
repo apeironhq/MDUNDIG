@@ -24,11 +24,14 @@ const loginUrl = computed(() => {
   return `${base}/login?u=${encodeURIComponent(props.username)}`
 })
 const message = ref('')
+// Template buatan admin (menu Pesan WhatsApp); bawaan bila belum diatur.
+const { templates, load: loadTemplates } = useWaTemplates()
+void loadTemplates()
 watchEffect(() => {
   message.value = buildAccessMessage({
     name: props.name, username: props.username, password: effectivePassword.value, loginUrl: loginUrl.value,
     invitationTitle: props.invitationTitle, sender: props.sender,
-  })
+  }, templates.value.access)
 })
 const link = computed(() => (phone.value && !passwordProblem.value ? whatsappLink(phone.value, message.value) : ''))
 const sentAt = ref<string | null>(props.sentAt ?? null)

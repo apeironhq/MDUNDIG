@@ -152,7 +152,7 @@ Respons `201` (baru) atau `200` (retry identik):
  "data":{"visibility":"admin_only","scope":{"website_id":"site-0123456789abcdef0123456789abcdef","post_id":5,"document_id":5,"element_id":"order1"},
          "status":"stored","order_id":"12345678-1234-4234-8234-123456789abc","request_id":"<64 hex>","timestamp":"2026-10-16T12:00:00.000Z"},"error":null}
 ```
-`fields`/`labels` disimpan apa adanya sebagai JSONB (custom field, array checkbox, angka nol). Respons hanya receipt. Tidak ada operasi baca untuk token website; data Form Order hanya lewat route admin berbasis session.
+`fields`/`labels` disimpan apa adanya sebagai JSONB (custom field, array checkbox, angka nol). **Opsional (plugin baru):** `field_sections` `{ key: "Nama step" }` dan `option_labels` `{ key: { kode: "Teks opsi" } }` disimpan di kolom `meta` untuk tampilan dashboard; bagian yang tidak valid dibuang tanpa menolak order, dan tidak ikut hash idempotensi (kiriman ulang dengan/tanpa meta tetap duplikat yang sama). Respons hanya receipt. Tidak ada operasi baca untuk token website; data Form Order hanya lewat route admin berbasis session.
 
 ## Endpoint dashboard (session Supabase)
 
@@ -174,3 +174,12 @@ Endpoint lain memerlukan `Authorization: Bearer <access_token Supabase>`; query 
 | `GET/POST /api/app/admin/owner-mappings`, `DELETE /api/app/admin/owner-mappings/:id` | admin |
 | `GET/POST /api/app/admin/invitations/:id/access`, `DELETE …/access/:userId` | admin |
 | `GET /api/app/admin/form-orders`, `GET /api/app/admin/form-orders/:id`, `GET /api/app/admin/form-orders/export` (CSV, pemisah `;`), `GET /api/app/admin/form-orders/export-pdf` (PDF) | admin |
+| `GET /api/app/admin/events?from=YYYY-MM-DD&to=YYYY-MM-DD` (kalender acara akad/resepsi/ngunduh, rentang ≤ 400 hari) | admin |
+| `GET /api/app/admin/audit?action=&page=` (riwayat aktivitas), `GET/DELETE /api/app/admin/errors` (log error 30 hari) | admin |
+| `GET/PUT /api/app/admin/settings/whatsapp` (`{ access_template, recap_template }`; null = bawaan; placeholder wajib dicek) | admin |
+| `GET /api/app/admin/invitations/:id/recap` (rekap reservasi per hadiah + pemegang undangan, untuk dikirim lewat WhatsApp) | admin |
+| `POST /api/app/client-error` (laporan error browser, ringkas) | semua |
+| `POST/DELETE /api/app/push/subscribe` (langganan push perangkat ini; endpoint hanya layanan push resmi) | semua |
+| `GET /api/img?u=&e=&s=` (proksi gambar hadiah `http://`; hanya URL bertanda tangan server, alamat privat ditolak, maks. 5 MB, raster saja) | publik |
+
+**Verifikasi dua langkah:** akun yang punya faktor TOTP terverifikasi (Supabase MFA) wajib sesi `aal2` — semua endpoint di atas menjawab `401 mfa_required` sampai kode authenticator dimasukkan (halaman `/verifikasi`).
