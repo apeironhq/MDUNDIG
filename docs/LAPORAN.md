@@ -378,6 +378,11 @@ Catatan: untuk pilihan (dropdown/radio/checkbox) buatan sendiri, plugin mengirim
 - **Detail undangan**: dicek — katalog & panel Akses pelanggan sudah sama tinggi dan sejajar di desktop; di ponsel/tablet bertumpuk rapi (katalog 4 teratas + Tampilkan semua, tombol Kirim rekap jelas). Tidak perlu diubah.
 - Tidak ada luapan horizontal di desktop, tablet, maupun ponsel.
 
+## 5ah. Detail undangan: tanpa ruang kosong di panel Akses pelanggan
+
+- Penyebab: panel Akses pelanggan berbatas tinggi minimal 300px, padahal isinya (satu akun + Kirim rekap + catatan) ±255px → ruang kosong di bawah; katalog mengikuti tinggi panel.
+- Kini panel setinggi isinya (minimal 240px agar katalog tetap terbaca) dan katalog sama tinggi. Diukur di 1640px & 1366px, dengan dan tanpa pelanggan: tinggi katalog = panel, sisa ruang di bawah isi ≤ 1px. Tes e2e menambah pemeriksaan ruang kosong ini.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

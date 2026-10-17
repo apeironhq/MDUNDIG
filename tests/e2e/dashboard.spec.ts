@@ -714,6 +714,13 @@ test('detail undangan: katalog berjalan halus menyambung & setinggi panel akses;
     const [ch, ah] = await Promise.all([catalog.evaluate((e) => Math.round(e.getBoundingClientRect().height)), access.evaluate((e) => Math.round(e.getBoundingClientRect().height))])
     expect(Math.abs(ch - ah)).toBeLessThanOrEqual(1)
   }).toPass({ timeout: 5000 })
+  // Tidak ada ruang kosong di bawah isi panel akses (selain padding kartu).
+  const gap = await access.evaluate((panel) => {
+    const body = panel.querySelector('.panel-body') as HTMLElement
+    const last = body.lastElementChild as HTMLElement
+    return Math.round(panel.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom - parseFloat(getComputedStyle(body).paddingBottom))
+  })
+  expect(gap).toBeLessThanOrEqual(2)
   const list = page.getByRole('region', { name: 'Daftar katalog hadiah' })
   await expect(list.locator('[aria-hidden="true"][inert]')).toHaveCount(1)
   const offset = () => list.evaluate((e) => -new DOMMatrix(getComputedStyle(e.firstElementChild as Element).transform).m42)

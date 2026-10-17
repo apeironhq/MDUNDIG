@@ -183,8 +183,9 @@ const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g
 .catalog { display: flex; flex-direction: column; min-width: 0; height: 360px; }
 /* Panel akses setinggi isinya (maks. 480px, lalu digulir); katalog mengikuti tingginya. */
 @media (min-width: 1024px) {
-  .main-grid.with-side > .side-panel { height: auto; min-height: 300px; max-height: 480px; }
-  .main-grid.with-side > .catalog { height: var(--side-h, 360px); }
+  /* Setinggi isinya (tanpa ruang kosong di bawah); minimal 240px agar katalog di sebelahnya tetap terbaca. */
+  .main-grid.with-side > .side-panel { height: auto; min-height: 240px; max-height: 480px; }
+  .main-grid.with-side > .catalog { height: var(--side-h, 360px); min-height: 240px; }
 }
 @media (max-width: 1023.98px) { .catalog { height: auto; max-height: 520px; } }
 /* Ponsel: katalog setinggi isinya (4 teratas + tombol tampilkan semua), tanpa gulir di dalam kartu. */
