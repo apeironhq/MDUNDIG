@@ -372,6 +372,12 @@ Catatan: untuk pilihan (dropdown/radio/checkbox) buatan sendiri, plugin mengirim
 - Kini pesan menyebut **jumlah total** + **6 reservasi terbaru** (hadiah — nama tamu), lalu "…dan N reservasi lainnya — lihat semuanya di tautan di bawah" diikuti tautan masuk (username sudah terisi). Reservasi ≤ 6 disebut semua tanpa kalimat "lainnya". Server hanya mengambil 6 baris + hitungan total (lebih ringan).
 - Uji: unit (115 → 6 baris, "…dan 109", tautan < 1.500 karakter; ≤ 6; kosong) & e2e 115 reservasi di desktop/tablet/ponsel.
 
+## 5ag. Kerapian halaman Pesan WhatsApp & detail undangan
+
+- **Pesan WhatsApp**: kotak Template & Pratinjau kini sejajar atas-bawah di desktop (diukur: posisi sama persis di kedua kartu). Tombol sisip data dipindah ke baris selebar kartu. Setiap kartu punya footer sendiri (jumlah karakter + **Kembalikan bawaan** + **Simpan**) seperti kartu di Profil — di ponsel tidak perlu menggulir ke atas untuk menyimpan; tombol penuh lebar dan bertumpuk. Kotak template lebih pendek di ponsel.
+- **Detail undangan**: dicek — katalog & panel Akses pelanggan sudah sama tinggi dan sejajar di desktop; di ponsel/tablet bertumpuk rapi (katalog 4 teratas + Tampilkan semua, tombol Kirim rekap jelas). Tidak perlu diubah.
+- Tidak ada luapan horizontal di desktop, tablet, maupun ponsel.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

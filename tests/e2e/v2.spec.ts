@@ -82,15 +82,15 @@ test('pesan WhatsApp: template bisa diubah dengan pratinjau; placeholder wajib d
   // Hapus {password} → peringatan & tombol simpan nonaktif.
   await area.fill('Halo {nama}, akun {username}\n{link_login}')
   await expect(access.getByRole('alert')).toContainText('{password}')
-  await expect(page.getByRole('button', { name: 'Simpan template' })).toBeDisabled()
+  await expect(access.getByRole('button', { name: 'Simpan pesan akses akun' })).toBeDisabled()
   // Sisipkan lewat tombol placeholder.
   await area.focus()
   await page.keyboard.press('End')
   await access.getByRole('button', { name: '{password}' }).click()
   await expect(area).toHaveValue(/\{password\}/)
   await expect(page.getByTestId('preview-access')).toContainText('Halo Rina, akun rina.doni')
-  await page.getByRole('button', { name: 'Simpan template' }).click()
-  await expect(page.getByTestId('toast')).toContainText('Template pesan disimpan')
+  await access.getByRole('button', { name: 'Simpan pesan akses akun' }).click()
+  await expect(page.getByTestId('toast')).toContainText('Template pesan akses akun disimpan')
   expect(state.waTemplates.access).toContain('{password}')
   // Popup WhatsApp di Pengguna memakai template baru.
   await page.goto('/admin/pengguna')
