@@ -97,6 +97,37 @@ test('order undangan: ringkasan satu baris & popup per bagian, field kosong dise
   await expect(detail.getByRole('region', { name: 'Akad' })).toContainText('Hari/Tanggal')
 })
 
+test('order undangan: Cerita Cinta satu bagian, tiap cerita bersub-judul (judul, tanggal, isi bersama)', async ({ page }) => {
+  // Label asli widget: judul berawalan nama cerita, tanggal & isi tanpa awalan.
+  const entries = [
+    { key: 'customer_name', label: 'Nama Pemesan', value: 'Rina' },
+    { key: 'love_extra_1_title', label: 'Cerita Cinta: Judul Perjalanan', value: 'Hidup Bahagia' },
+    { key: 'love_journey_title', label: 'Menuju Pernikahan: Judul Perjalanan', value: 'Menuju Pernikahan' },
+    { key: 'love_meeting_title', label: 'Pertama Bertemu: Judul Perjalanan', value: 'Awal Kisah' },
+    { key: 'love_meeting_date', label: 'Tanggal Pertama Bertemu', value: '12 Januari 2020' },
+    { key: 'love_meeting_story', label: 'Cerita Pertama Bertemu', value: 'Bertemu di kampus' },
+    { key: 'love_engagement_title', label: 'Pertunangan: Judul Perjalanan', value: 'Pertunangan' },
+    { key: 'bank_name_1', label: 'Nama Bank 1', value: 'BCA' },
+  ]
+  await installMocks(page, 'admin', { orders: [{ id: '77777777-7777-4777-8777-777777777777', website_id: 'w', post_title: 'Form Order', post_id: 5, status: 'baru', source: 'widget', admin_note: '', created_at: '2026-10-16T10:00:00.000Z', entries }] })
+  await login(page, 'admin')
+  await page.goto('/order-undangan')
+  await page.getByRole('button', { name: 'Detail order Form Order' }).click()
+  const detail = page.getByTestId('order-detail')
+  const love = detail.getByRole('region', { name: 'Cerita Cinta' })
+  await expect(love).toHaveCount(1)
+  // Bukan bagian terpisah per cerita, dan tanggal/isi tidak jatuh ke "Lainnya".
+  for (const name of ['Pertama Bertemu', 'Pertunangan', 'Menuju Pernikahan']) await expect(detail.getByRole('region', { name, exact: true })).toHaveCount(0)
+  await expect(detail.getByRole('region', { name: 'Lainnya' })).toHaveCount(0)
+  await expect(love.locator('.group-title')).toHaveText(['Pertama Bertemu', 'Pertunangan', 'Menuju Pernikahan', 'Cerita tambahan 1'])
+  await expect(love.locator('.group-rows').first()).toContainText('JudulAwal Kisah')
+  await expect(love.locator('.group-rows').first()).toContainText('Tanggal12 Januari 2020')
+  await expect(love.locator('.group-rows').first()).toContainText('CeritaBertemu di kampus')
+  await expect(love).not.toContainText('Judul Perjalanan')
+  // Bagian lain tetap seperti biasa.
+  await expect(detail.getByRole('region', { name: 'Rekening 1' })).toContainText('BCA')
+})
+
 test('order dari widget: isi hanya-lihat; status & catatan admin tetap bisa diubah', async ({ page }) => {
   const state = await installMocks(page, 'admin')
   await login(page, 'admin')

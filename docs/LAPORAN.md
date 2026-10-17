@@ -292,6 +292,13 @@ Masalah yang ditemukan & diperbaiki:
 
 Dicek & sudah konsisten (tidak diubah): header halaman (judul + deskripsi + tombol utama di kanan), header kartu (ikon + judul + deskripsi kecil + badge jumlah), footer modal (Batal kiri, aksi utama kanan; bertumpuk penuh di ponsel), kartu tabel di ponsel, tidak ada luapan halaman di semua halaman. Pilihan filter "Semua/Belum dibaca" di Notifikasi (32px) dan tautan "Hapus semua" sengaja lebih kecil sesuai permintaan sebelumnya (hapus tidak ditonjolkan).
 
+## 5z. Detail Order: Cerita Cinta jadi satu bagian
+
+- Masalah: widget Form Order mengirim tiap cerita sebagai `love_<cerita>_<title|date|story>` dengan label terpecah ("Pertama Bertemu: Judul Perjalanan", "Tanggal Pertama Bertemu", "Cerita Pertama Bertemu"). Akibatnya tiap cerita tampil sebagai bagian sendiri (Cerita Cinta, Menuju Pernikahan, Pertama Bertemu, Pertunangan — seolah hal berbeda), sedangkan tanggal & isi ceritanya jatuh ke "Lainnya".
+- Kini semua masuk **satu bagian "Cerita Cinta"** (setelah Akad/Resepsi, sebelum Rekening), dikelompokkan per cerita dengan sub-judul dan urutan kronologis: Pertama Bertemu → Pertunangan → Menuju Pernikahan → Cerita tambahan 1, 2, … Isi tiap cerita: Judul, Tanggal, Cerita.
+- Berlaku juga di laporan PDF order (label "Pertama Bertemu — Judul", dst.) dan ringkasan satu baris. Data tersimpan & kontrak plugin tidak berubah — hanya penyusunan tampilan (`shared/orderSections.ts`).
+- Uji: unit (label asli dari data live) & e2e popup detail order.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

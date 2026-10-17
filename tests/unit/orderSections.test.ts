@@ -32,6 +32,30 @@ describe('orderSections', () => {
     expect(g[1]!.fields.map((f) => f.field)).toEqual(['Nama Lengkap', 'Nama Panggilan', 'No. WhatsApp'])
     expect(g[3]!.fields.find((f) => f.key === 'akad_date')!.empty).toBe(true)
   })
+  it('Cerita Cinta: semua cerita (judul, tanggal, isi) jadi satu bagian, dikelompokkan per cerita & urut kronologis', () => {
+    // Label asli dari widget (data live): judul berawalan nama cerita, tanggal & isi tanpa awalan.
+    const love = [
+      { key: 'love_extra_1_title', label: 'Cerita Cinta: Judul Perjalanan', value: 'Hidup Bahagia' },
+      { key: 'love_journey_title', label: 'Menuju Pernikahan: Judul Perjalanan', value: 'Menuju Pernikahan' },
+      { key: 'love_meeting_story', label: 'Cerita Pertama Bertemu', value: 'Bertemu di kampus' },
+      { key: 'love_meeting_title', label: 'Pertama Bertemu: Judul Perjalanan', value: 'Pertama Bertemu' },
+      { key: 'love_meeting_date', label: 'Tanggal Pertama Bertemu', value: '2020-01-01' },
+      { key: 'love_engagement_title', label: 'Pertunangan: Judul Perjalanan', value: 'Pertunangan' },
+      { key: 'love_engagement_date', label: 'Tanggal Pertunangan', value: '' },
+    ]
+    const g = groupOrderEntries([...entries, ...love])
+    expect(g.map((s) => s.title)).toEqual(['Pemesan', 'Pria', 'Wanita', 'Akad', 'Cerita Cinta', 'Rekening 1', 'Lainnya'])
+    const story = g.find((s) => s.title === 'Cerita Cinta')!
+    expect(story.fields.map((f) => `${f.group} / ${f.field}`)).toEqual([
+      'Pertama Bertemu / Judul', 'Pertama Bertemu / Tanggal', 'Pertama Bertemu / Cerita',
+      'Pertunangan / Judul', 'Pertunangan / Tanggal',
+      'Menuju Pernikahan / Judul',
+      'Cerita tambahan 1 / Judul',
+    ])
+    // Tidak ada lagi bagian terpisah per cerita, dan tanggal/isi cerita tidak jatuh ke "Lainnya".
+    expect(g.some((s) => ['Pertama Bertemu', 'Pertunangan', 'Menuju Pernikahan'].includes(s.title))).toBe(false)
+    expect(g.find((s) => s.title === 'Lainnya')!.fields.some((f) => f.key.startsWith('love_'))).toBe(false)
+  })
   it('ringkasan satu baris mendahulukan pemesan & mempelai, melewati field kosong', () => {
     expect(orderSummary(entries)).toBe('Pemesan: Rina · Pria: Budi · Wanita: Sari Dewi')
     expect(orderSummary([{ key: 'x', label: 'Akad — Waktu', value: '' }, { key: 'y', label: 'Paket', value: 'Gold' }])).toBe('Paket: Gold')

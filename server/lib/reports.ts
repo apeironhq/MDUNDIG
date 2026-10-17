@@ -70,7 +70,7 @@ export function orderCards(orders: OrderExportRow[]): ReportCard[] {
   return orders.map((o, i) => {
     const entries = Object.keys(o.fields).map((key) => ({ key, label: o.labels[key] || key, value: o.fields[key] as string | string[] }))
     const sections = groupOrderEntries(entries)
-      .map((s) => ({ title: s.title, fields: s.fields.filter((f) => !isEmptyValue(f.value)).map((f) => ({ label: f.field, value: displayValue(f.value) })) }))
+      .map((s) => ({ title: s.title, fields: s.fields.filter((f) => !isEmptyValue(f.value)).map((f) => ({ label: f.group ? `${f.group} — ${f.field}` : f.field, value: displayValue(f.value) })) }))
       .filter((s) => s.fields.length)
     return {
       title: `${i + 1}. ${o.post_title || (o.post_id ? `Post #${o.post_id}` : 'Order manual')}`,

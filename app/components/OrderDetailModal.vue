@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ClipboardList, Lock, Pencil, Trash2 } from 'lucide-vue-next'
-import { displayValue, groupOrderEntries, isEmptyValue, type OrderEntry } from '../../shared/orderSections'
+import { displayValue, groupOrderEntries, isEmptyValue, type OrderEntry, type OrderField } from '../../shared/orderSections'
 import type { OrderEdit } from './OrderFormModal.vue'
 
 // Detail Order Undangan dalam popup: dikelompokkan per bagian (Pemesan, Pria, Wanita, Akad, …), field kosong disembunyikan.
@@ -29,6 +29,16 @@ watch(() => props.orderId, (id) => { showEmpty.value = false; if (id) void load(
 const sections = computed(() => groupOrderEntries(data.value?.entries ?? [])
   .map((s) => ({ ...s, fields: showEmpty.value ? s.fields : s.fields.filter((f) => !f.empty) }))
   .filter((s) => s.fields.length))
+// Field berurutan dengan `group` yang sama → satu blok bersub-judul (mis. tiap cerita di Cerita Cinta).
+function chunks(fields: OrderField[]) {
+  const out: Array<{ group: string; fields: OrderField[] }> = []
+  for (const f of fields) {
+    const g = f.group ?? ''
+    if (out.at(-1)?.group === g) out.at(-1)!.fields.push(f)
+    else out.push({ group: g, fields: [f] })
+  }
+  return out
+}
 const emptyCount = computed(() => (data.value?.entries ?? []).filter((e) => isEmptyValue(e.value)).length)
 const title = computed(() => data.value ? (data.value.post_title || (data.value.post_id ? `Post #${data.value.post_id}` : 'Order')) : 'Detail order')
 const subtitle = computed(() => data.value
@@ -127,12 +137,17 @@ async function remove() {
 
       <section v-for="s in sections" :key="s.title" class="section" :aria-label="s.title">
         <h3 class="section-title">{{ s.title }}</h3>
-        <dl class="rows">
-          <div v-for="f in s.fields" :key="f.key" class="row">
-            <dt>{{ f.field }}</dt>
-            <dd :class="{ 'is-empty': f.empty }">{{ f.empty ? '—' : displayValue(f.value) }}</dd>
-          </div>
-        </dl>
+        <div class="rows">
+          <template v-for="c in chunks(s.fields)" :key="c.group || '-'">
+            <p v-if="c.group" class="group-title">{{ c.group }}</p>
+            <dl class="group-rows">
+              <div v-for="f in c.fields" :key="f.key" class="row">
+                <dt>{{ f.field }}</dt>
+                <dd :class="{ 'is-empty': f.empty }">{{ f.empty ? '—' : displayValue(f.value) }}</dd>
+              </div>
+            </dl>
+          </template>
+        </div>
       </section>
       <p v-if="!sections.length" class="text-caption">Semua field kosong.</p>
       <button v-if="emptyCount" class="btn btn-ghost btn-sm self-start" type="button" @click="showEmpty = !showEmpty">
@@ -170,6 +185,10 @@ async function remove() {
 .rows { margin: 0; border: 1px solid var(--border); border-radius: var(--r); }
 .row { display: grid; grid-template-columns: minmax(140px, 38%) 1fr; gap: 1rem; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border); }
 .row:last-child { border-bottom: 0; }
+.group-rows { margin: 0; }
+.group-rows + .group-rows, .group-rows + .group-title { border-top: 1px solid var(--border); }
+.group-title { padding: 0.55rem 0.9rem; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--text-heading); background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+.group-title:first-child { border-radius: var(--r) var(--r) 0 0; }
 .row dt { color: var(--text-muted); font-size: var(--fs-label); }
 .row dd { margin: 0; color: var(--text-heading); min-width: 0; overflow-wrap: anywhere; white-space: pre-line; }
 .row dd.is-empty { color: var(--text-faint); }
