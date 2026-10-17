@@ -226,7 +226,7 @@ Bug & perbaikan:
 - **Lag/boros CPU**: setiap daftar bergulir menjalankan animasi 60 fps terus-menerus walau diam, disorot, di luar layar, atau tab tersembunyi. Kini animasi hanya berjalan saat pita benar-benar bergerak & terlihat (IntersectionObserver + visibilitychange). Diukur: < 20 frame per 2 detik saat diam (sebelumnya ±360).
 - **Font**: Ubuntu kini disajikan dari domain sendiri (`public/fonts`, 49 KB, preload 2 bobot, cache 1 tahun) — tanpa koneksi ke Google Fonts.
 - **Layar pembuka** berlogo saat aplikasi dimuat (tidak ada layar putih kosong).
-- Uji: 2 tes performa baru (frame animasi, KPI tautan, waktu muat; font lokal & layar pembuka). Playwright 117 lulus + 22 dilewati sengaja, vitest 92/92.
+- Uji: 2 tes performa baru (frame animasi, KPI tautan, waktu muat; font lokal & layar pembuka). Playwright 116 lulus + 22 dilewati sengaja, vitest 92/92.
 
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
