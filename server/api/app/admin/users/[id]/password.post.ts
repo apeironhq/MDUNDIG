@@ -16,6 +16,10 @@ export default defineEventHandler(async (event) => {
   if (!exists.data) throw notFound('Akun tidak ditemukan.')
   const { error } = await service.auth.admin.updateUserById(id, { password: body.password as string })
   if (error) throw createError({ statusCode: 502, statusMessage: 'update_failed', data: { message: 'Password gagal diperbarui oleh Supabase Auth.' } })
+  {
+    const { error: sentError } = await service.from('profiles').update({ whatsapp_sent_at: null }).eq('id', id)
+    if (sentError) console.error(JSON.stringify({ scope: 'user.password_reset', step: 'whatsapp_sent_at', code: sentError.code ?? null }))
+  }
   await audit(user, 'user.password_reset', id)
   return { ok: true }
 })

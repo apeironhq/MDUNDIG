@@ -30,6 +30,9 @@ describe('WhatsApp', () => {
     expect(generic.split('\n')[0]).toBe('Halo, *u1* 👋')
     expect(generic).toContain('undangan Anda:')
     expect(generic.split('\n').at(-1)).toBe('Terima kasih 🙏')
+    // Kirim ulang tanpa password baru.
+    const resend = buildAccessMessage({ name: 'Rina', username: 'rina.doni', password: null, loginUrl: 'https://x.example/login' })
+    expect(resend).toContain('🔑 *Password:* sama seperti yang sudah kami berikan sebelumnya')
   })
   it('tautan wa.me dengan pesan ter-encode', () => {
     const link = whatsappLink('6281234567890', 'Halo *A*\nB & C')

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ArrowLeft, ArrowRight, Gift, KeyRound, MessageCircle, Pencil, Trash2, UserPlus, UserRound, Users } from 'lucide-vue-next'
 import { formatWhatsapp, normalizeWhatsapp } from '../../../shared/whatsapp'
+import WhatsAppIcon from '../../components/WhatsAppIcon.vue'
 
 definePageMeta({ admin: true })
 useHead({ title: 'Pengguna & Akses — MDUNDIG' })
 
-interface UserRow { id: string; username: string | null; email: string; display_name: string; role: 'admin' | 'customer'; created_at: string; whatsapp?: string | null; access_count?: number; access_title?: string | null }
-interface InvitationOption { id: string; title: string; website_name: string | null }
+interface UserRow { id: string; username: string | null; email: string; display_name: string; role: 'admin' | 'customer'; created_at: string; whatsapp?: string | null; whatsapp_sent_at?: string | null; access_count?: number; access_title?: string | null; access_invitation_id?: string | null }
+interface InvitationOption { id: string; title: string; website_name: string | null; access_count?: number; mapped_user_count?: number }
 
 const api = useApi()
 const toast = useToast()
@@ -41,6 +42,43 @@ async function loadInvitations(force = false) {
 }
 onMounted(() => { void users.load() })
 
+// Akses 1:1: undangan yang sudah dipegang akun lain (akses eksplisit atau pemetaan otomatis) tidak bisa dipilih.
+function takenFor(exceptUserId: string | null): Record<string, string> {
+  const holders = new Map<string, string>()
+  for (const u of users.items.value) {
+    if (u.access_invitation_id && u.id !== exceptUserId) holders.set(u.access_invitation_id, u.username || u.display_name || 'akun lain')
+  }
+  const own = exceptUserId ? users.items.value.find((u) => u.id === exceptUserId)?.access_invitation_id : null
+  const taken: Record<string, string> = {}
+  for (const i of invitations.value) {
+    if (i.id === own) continue
+    const holder = holders.get(i.id)
+    if (holder) taken[i.id] = holder
+    else if (i.mapped_user_count) taken[i.id] = 'pemetaan otomatis'
+    else if (i.access_count) taken[i.id] = 'akun lain'
+  }
+  return taken
+}
+
+// Status kirim akses lewat WhatsApp (biru = belum, abu-abu = sudah; tetap bisa dikirim ulang).
+async function markSent(userId: string, phone: string) {
+  try {
+    const res = await api.request<{ whatsapp: string; whatsapp_sent_at: string }>(`/api/app/admin/users/${userId}/whatsapp-sent`, { method: 'POST', body: { whatsapp: phone } })
+    const row = users.items.value.find((u) => u.id === userId)
+    if (row) Object.assign(row, res)
+  } catch (err) {
+    toast.error(errorMessage(err, 'Status kirim WhatsApp gagal disimpan.'))
+  }
+}
+const waTarget = ref<UserRow | null>(null)
+function openWa(u: UserRow) { waTarget.value = u; void loadInvitations() }
+const waSender = computed(() => invitations.value.find((i) => i.id === waTarget.value?.access_invitation_id)?.website_name ?? null)
+async function resetBeforeSend(input: { password: string | null }) {
+  if (!waTarget.value || !input.password) return
+  await api.request(`/api/app/admin/users/${waTarget.value.id}/password`, { method: 'POST', body: { password: input.password } })
+  toast.success('Password diperbarui.')
+}
+
 // ---- 1. Akun
 const createOpen = ref(false)
 const account = reactive({ username: '', display_name: '', email: '', whatsapp: '', password: '', confirm: '', invitation_ids: [] as string[] })
@@ -53,7 +91,8 @@ const WA_INVALID = 'Nomor WhatsApp tidak valid. Gunakan nomor aktif, mis. 0812-3
 // Data untuk pesan akses (password hanya disimpan di memori selama modal terbuka).
 interface AccessShare { name: string; username: string; password: string; whatsapp: string | null; invitationTitle: string | null; sender: string | null }
 const created = ref<AccessShare | null>(null)
-function openCreate() { createError.value = ''; createStep.value = 1; created.value = null; createOpen.value = true; void loadInvitations() }
+const createdId = ref('')
+function openCreate() { createError.value = ''; createStep.value = 1; created.value = null; createOpen.value = true; void loadInvitations(true) }
 function closeCreate() {
   createOpen.value = false
   created.value = null
@@ -75,12 +114,13 @@ async function createAccount() {
   if (createError.value) { createStep.value = 1; return }
   creating.value = true
   try {
-    const res = await api.request<{ username: string; whatsapp: string | null; granted: number; access_failed: boolean }>('/api/app/admin/users', {
+    const res = await api.request<{ id: string; username: string; whatsapp: string | null; granted: number; access_failed: boolean }>('/api/app/admin/users', {
       method: 'POST', body: { username: account.username, display_name: account.display_name, email: account.email, whatsapp: account.whatsapp, password: account.password, invitation_ids: account.invitation_ids },
     })
     if (res.access_failed) toast.error(`Akun ${res.username} dibuat, tetapi akses undangan gagal disimpan. Atur lewat tombol Akses.`)
     else toast.success(res.granted ? `Akun ${res.username} dibuat dan dapat melihat undangan yang dipilih.` : `Akun ${res.username} dibuat. Atur undangannya lewat tombol Akses.`)
     const inv = res.granted ? invitations.value.find((i) => i.id === account.invitation_ids[0]) : undefined
+    createdId.value = res.id
     created.value = {
       name: account.display_name.trim() || res.username, username: res.username, password: account.password,
       whatsapp: res.whatsapp ?? normalizeWhatsapp(account.whatsapp), invitationTitle: inv?.title ?? null, sender: inv?.website_name ?? null,
@@ -255,6 +295,9 @@ async function saveAccess() {
               <td class="cell-actions">
                 <div class="flex gap-1 justify-end">
                   <button v-if="u.role === 'customer'" class="btn btn-secondary btn-sm" type="button" :aria-label="`Atur akses undangan ${u.username || u.email}`" @click="openAccess(u)"><Gift :size="15" /> Akses</button>
+                  <button v-if="u.role === 'customer'" class="btn btn-ghost btn-sm btn-icon wa-btn" :class="{ unsent: !u.whatsapp_sent_at }" type="button"
+                    :title="u.whatsapp_sent_at ? `Akses terkirim ${formatDateTime(u.whatsapp_sent_at)} — klik untuk kirim ulang` : 'Akses belum dikirim lewat WhatsApp'"
+                    :aria-label="`Kirim akses lewat WhatsApp ${u.username || u.email}`" :data-sent="u.whatsapp_sent_at ? 'ya' : 'belum'" @click="openWa(u)"><WhatsAppIcon :size="16" /></button>
                   <button class="btn btn-ghost btn-sm btn-icon" type="button" title="Ubah akun" :aria-label="`Ubah akun ${u.username || u.email}`" @click="openEditUser(u)"><Pencil :size="15" /></button>
                   <button class="btn btn-ghost btn-sm btn-icon" type="button" title="Atur ulang password" :aria-label="`Atur ulang password ${u.username || u.email}`" @click="openReset(u)"><KeyRound :size="15" /></button>
                   <button v-if="!isSelf(u)" class="btn btn-danger-ghost btn-sm btn-icon" type="button" title="Hapus akun" :aria-label="`Hapus akun ${u.username || u.email}`" @click="deleteUser = u"><Trash2 :size="15" /></button>
@@ -271,10 +314,10 @@ async function saveAccess() {
     <ModalDialog :open="createOpen" :icon="UserPlus" title="Tambah akun pelanggan" subtitle="Akun langsung aktif. Setelah dibuat, akses akun dapat langsung dikirim ke WhatsApp pelanggan." :closable="!creating" @close="closeCreate">
       <ol class="steps" aria-label="Langkah tambah akun">
         <li :class="{ active: createStep === 1, done: createStep > 1 }" :aria-current="createStep === 1 ? 'step' : undefined"><span class="step-icon"><UserRound :size="16" /></span><span>1. Data akun</span></li>
-        <li :class="{ active: createStep === 2, done: createStep > 2 }" :aria-current="createStep === 2 ? 'step' : undefined"><span class="step-icon"><Gift :size="16" /></span><span>2. Akses undangan</span></li>
+        <li :class="{ active: createStep === 2, done: createStep > 2 }" :aria-current="createStep === 2 ? 'step' : undefined"><span class="step-icon"><Gift :size="16" /></span><span>2. Akses</span></li>
         <li :class="{ active: createStep === 3 }" :aria-current="createStep === 3 ? 'step' : undefined"><span class="step-icon"><MessageCircle :size="16" /></span><span>3. Kirim akses</span></li>
       </ol>
-      <WhatsAppAccessPanel v-if="createStep === 3 && created" v-bind="created" />
+      <WhatsAppAccessPanel v-if="createStep === 3 && created" v-bind="created" @sent="markSent(createdId, $event)" />
       <form v-else id="account-form" class="flex flex-col gap-5" autocomplete="off" novalidate @submit.prevent="createAccount">
         <template v-if="createStep === 1">
           <div class="field">
@@ -301,7 +344,7 @@ async function saveAccess() {
         </template>
         <fieldset v-else class="field">
           <legend class="field-label">Undangan untuk akun ini <span class="text-caption">(pilih satu; opsional — bisa diatur nanti lewat tombol Akses)</span></legend>
-          <InvitationPicker v-model="account.invitation_ids" :options="invitations" :loading="invitationsLoading" id-prefix="new-inv" />
+          <InvitationPicker v-model="account.invitation_ids" :options="invitations" :taken="takenFor(null)" :loading="invitationsLoading" id-prefix="new-inv" />
         </fieldset>
         <p v-if="createError" class="alert tone-err" role="alert">{{ createError }}</p>
       </form>
@@ -353,7 +396,7 @@ async function saveAccess() {
     <ModalDialog :open="!!accessTarget" :icon="Gift" title="Atur akses undangan" :subtitle="accessTarget ? `${label(accessTarget)} hanya melihat dan mengunduh satu undangan yang dipilih.` : ''"
       :closable="!accessSaving" @close="accessTarget = null">
       <form id="access-form" class="flex flex-col gap-4" novalidate data-testid="access-form" @submit.prevent="saveAccess">
-        <InvitationPicker v-model="accessIds" :options="invitations" :loading="accessLoading || invitationsLoading" id-prefix="acc-inv" />
+        <InvitationPicker v-model="accessIds" :options="invitations" :taken="takenFor(accessTarget?.id ?? null)" :loading="accessLoading || invitationsLoading" id-prefix="acc-inv" />
         <p v-if="accessError" class="alert tone-err" role="alert">{{ accessError }}</p>
       </form>
       <template #footer>
@@ -361,10 +404,19 @@ async function saveAccess() {
         <AsyncButton type="submit" form="access-form" :loading="accessSaving" :disabled="accessLoading">Simpan akses</AsyncButton>
       </template>
     </ModalDialog>
+    <ModalDialog :open="!!waTarget" :icon="WhatsAppIcon" title="Kirim akses lewat WhatsApp"
+      :subtitle="waTarget ? `${label(waTarget)} · ${waTarget.whatsapp_sent_at ? 'sudah dikirim, boleh dikirim ulang' : 'belum dikirim'}` : ''" @close="waTarget = null">
+      <WhatsAppAccessPanel v-if="waTarget" :key="waTarget.id" :name="waTarget.display_name || waTarget.username || waTarget.email" :username="waTarget.username || waTarget.email"
+        :password="null" :whatsapp="waTarget.whatsapp ?? null" :invitation-title="waTarget.access_title ?? null" :sender="waSender"
+        :sent-at="waTarget.whatsapp_sent_at ?? null" :before-send="resetBeforeSend" @sent="markSent(waTarget.id, $event)" />
+      <template #footer>
+        <button class="btn btn-secondary" type="button" @click="waTarget = null">Selesai</button>
+      </template>
+    </ModalDialog>
     <ModalDialog :open="!!resetTarget" :icon="resetShare ? MessageCircle : KeyRound" :title="resetShare ? 'Kirim akses terbaru' : 'Atur ulang password'"
       :subtitle="resetShare ? `Password ${label(resetTarget!)} sudah diganti. Kirim akses terbaru lewat WhatsApp.` : resetTarget ? `${label(resetTarget)} · setelah disimpan, akses baru dapat dikirim lewat WhatsApp.` : ''"
       :size="resetShare ? 'md' : 'sm'" :closable="!resetting" @close="closeReset">
-      <WhatsAppAccessPanel v-if="resetShare" v-bind="resetShare" />
+      <WhatsAppAccessPanel v-if="resetShare && resetTarget" v-bind="resetShare" @sent="markSent(resetTarget.id, $event)" />
       <form v-else id="reset-form" class="flex flex-col gap-4" novalidate @submit.prevent="resetPassword">
         <div class="field">
           <label for="r-pw" class="field-label">Password baru</label>
@@ -393,4 +445,7 @@ async function saveAccess() {
 .step-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--n-100); color: var(--n-500); flex-shrink: 0; }
 .steps li.active .step-icon, .steps li.done .step-icon { color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, transparent); }
 fieldset.field { border: 0; margin: 0; padding: 0; min-width: 0; }
+.wa-btn { position: relative; color: var(--text-muted); }
+.wa-btn.unsent { color: var(--brand); }
+.wa-btn.unsent::after { content: ''; position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 999px; background: var(--brand); box-shadow: 0 0 0 2px var(--surface, #fff); }
 </style>

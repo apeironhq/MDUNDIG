@@ -18,6 +18,13 @@ export default defineEventHandler(async (event) => {
       ? `Akun ini sudah punya akses ke undangan "${has.title}". ${ONE_INVITATION_MESSAGE}`
       : `Akun ini sudah punya pemetaan otomatis. ${ONE_INVITATION_MESSAGE}` } })
   }
+  // 1:1 — undangan milik ID pemilik ini tidak boleh sudah dipegang akun lain.
+  const owned = await user.db.from('invitations').select('id').eq('website_id', websiteId).eq('owner_external_id', owner).limit(500)
+  if (owned.error) throw dbError(owned.error)
+  for (const inv of owned.data ?? []) {
+    const holder = await invitationHolder(user, inv.id as string, userId)
+    if (holder) throw invitationTaken(holder)
+  }
   const { data, error } = await user.db.from('owner_mappings')
     .insert({ website_id: websiteId, external_owner_id: owner, user_id: userId, created_by: user.id })
     .select('id').single()

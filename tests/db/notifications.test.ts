@@ -35,7 +35,15 @@ beforeAll(async () => {
   const g = (await db.pool.query(`select id, invitation_id, registry_id from public.gifts where gift_key = 'gift-big'`)).rows[0]
   giftId = g.id; invitation = g.invitation_id; registry = g.registry_id
   await db.pool.query(`insert into public.invitation_access (invitation_id, user_id) values ($1, $2)`, [invitation, CUSTOMER])
-  await db.pool.query(`insert into public.owner_mappings (website_id, external_owner_id, user_id) values ($1, 'owner-7', $2)`, [website, MAPPED])
+  // Data lama sebelum aturan 1:1 (undangan sama lewat akses eksplisit & pemetaan): notifikasi tetap ke keduanya.
+  const c = await db.pool.connect()
+  try {
+    await c.query(`set session_replication_role = replica`)
+    await c.query(`insert into public.owner_mappings (website_id, external_owner_id, user_id) values ($1, 'owner-7', $2)`, [website, MAPPED])
+  } finally {
+    await c.query(`set session_replication_role = origin`)
+    c.release()
+  }
 })
 afterAll(async () => { await db?.stop() })
 

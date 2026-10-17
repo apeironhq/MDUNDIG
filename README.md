@@ -54,7 +54,7 @@ scripts/             bootstrap admin, pemeriksaan secret bundle
 
 ## Akun pelanggan (dibuat admin)
 
-1. **Pengguna & Akses → Tambah akun**: username, nomor WhatsApp aktif (wajib), password (min. 8), nama/email opsional, lalu pilih satu undangan yang boleh dilihat. Akun langsung aktif sebagai pelanggan, dan aksesnya (username, password, tautan masuk) dapat langsung dikirim lewat WhatsApp tanpa ditulis ulang. Atur ulang password juga menawarkan kirim akses terbaru.
+1. **Pengguna & Akses → Tambah akun**: username, nomor WhatsApp aktif (wajib), password (min. 8), nama/email opsional, lalu pilih satu undangan yang boleh dilihat (akses 1:1 — undangan yang sudah dipakai akun lain tidak bisa dipilih). Akun langsung aktif sebagai pelanggan, dan aksesnya (username, password, tautan masuk) dapat langsung dikirim lewat WhatsApp tanpa ditulis ulang. Atur ulang password juga menawarkan kirim akses terbaru. Tombol WhatsApp di tiap akun pelanggan berwarna biru bila akses belum dikirim dan abu-abu bila sudah (tetap bisa dikirim ulang).
 2. Ubah akses kapan saja lewat tombol **Akses** pada baris akun (popup centang + cari), atau dari **detail undangan → Akses pelanggan**. (Alternatif lanjutan: **Koneksi → Pemetaan otomatis dari WordPress** untuk `owner_id` dari filter `apeiron_daftar_hadiah_owner_id`.)
 3. Pelanggan masuk dengan username, melihat dan **mengunduh laporan PDF/CSV** Daftar Hadiah undangan miliknya saja. Form Order tidak pernah terlihat oleh pelanggan.
 4. Lupa password → admin klik **Password** pada baris akun untuk mengatur ulang.

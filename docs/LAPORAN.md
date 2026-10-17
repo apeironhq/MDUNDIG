@@ -245,6 +245,16 @@ Bug & perbaikan:
 - Nomor WhatsApp tampil di tabel akun dan bisa diubah lewat **Ubah akun**.
 - Uji: unit `shared/whatsapp.ts` (normalisasi, format, pesan, tautan), e2e alur wajib/valid nomor → pesan & tautan wa.me → kirim ulang setelah atur ulang password → isi otomatis username di login.
 
+## 5w. Akses 1:1 & tombol WhatsApp per akun
+
+- **Akses 1:1**: satu akun = satu undangan, dan kini juga **satu undangan = satu akun**. Migrasi `mdundig_one_user_per_invitation` **diterapkan** (constraint `invitation_access_one_per_invitation` + trigger yang juga mencegah akses eksplisit & pemetaan otomatis berebut undangan yang sama). Sebelum diterapkan, data live dicek: "Yeni & Lana" sempat dipegang 2 akun; sesuai keputusan pemilik, akun `user` yang dipertahankan (akses `ftt` sudah tercabut). Migrasi tidak menghapus data apa pun — bila masih ada duplikat, migrasi berhenti dengan pesan jelas.
+- Server menolak dengan pesan yang menyebut pemegangnya (mis. *Undangan "Andi & Sari" sudah dipakai akun rina.doni*) di semua jalur: Tambah akun, Atur akses, detail undangan, dan pemetaan otomatis.
+- Tampilan: undangan yang sudah dipakai tampil redup "Sudah dipakai: …" dan tidak bisa dipilih; di detail undangan, form "Tambah pelanggan" disembunyikan bila undangan sudah punya akun (cabut dulu untuk mengganti).
+- **Tombol WhatsApp per akun pelanggan** (logo WhatsApp) di tabel Pengguna: **biru + titik** = akses belum dikirim, **abu-abu** = sudah dikirim (tetap bisa dikirim ulang). Popup berisi nomor tujuan, pesan yang bisa disunting, dan **password baru (opsional)** — karena password tidak disimpan, tanpa password baru pesan menyebut "sama seperti yang sudah kami berikan sebelumnya"; bila diisi, password akun diganti dulu lalu WhatsApp dibuka.
+- Status kirim disimpan di `profiles.whatsapp_sent_at` lewat `POST /users/:id/whatsapp-sent` (nomor tujuan ikut disimpan; isi pesan & password tidak dikirim ke server). Atur ulang password mengembalikan status ke "belum dikirim".
+- Langkah tambah akun "2. Akses undangan" dipersingkat menjadi "2. Akses" agar tidak turun baris.
+- Uji: DB (1:1 eksplisit & pemetaan, status kirim), unit pesan tanpa password, e2e tombol biru/abu, kirim ulang dengan password baru, undangan terpakai tidak bisa dipilih, panel akses penuh.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

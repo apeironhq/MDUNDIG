@@ -23,7 +23,8 @@ export function formatWhatsapp(value: string | null | undefined): string {
 export interface AccessMessageInput {
   name: string
   username: string
-  password: string
+  /** null = password tidak dikirim ulang (pelanggan memakai password yang sudah diberikan). */
+  password: string | null
   loginUrl: string
   invitationTitle?: string | null
   sender?: string | null
@@ -40,7 +41,7 @@ export function buildAccessMessage(i: AccessMessageInput): string {
       : 'Terima kasih telah mempercayakan undangan digital Anda kepada kami. Berikut akun untuk melihat *Daftar Hadiah* undangan Anda:',
     '',
     `👤 *Username:* ${i.username}`,
-    `🔑 *Password:* ${i.password}`,
+    i.password ? `🔑 *Password:* ${i.password}` : '🔑 *Password:* sama seperti yang sudah kami berikan sebelumnya',
     '',
     '🔗 *Masuk di sini:*',
     i.loginUrl,

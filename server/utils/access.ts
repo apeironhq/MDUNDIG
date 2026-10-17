@@ -10,6 +10,34 @@ export function invitationIdsParam(value: unknown): string[] {
 }
 
 export const ONE_INVITATION_MESSAGE = 'Satu akun pelanggan hanya dapat mengakses satu undangan.'
+export const ONE_ACCOUNT_MESSAGE = 'Satu undangan hanya untuk satu akun pelanggan.'
+
+const holderName = (p: { username?: string | null; display_name?: string | null } | null) => p?.username || p?.display_name || 'akun lain'
+
+/**
+ * Akun lain yang sudah memegang undangan ini (akses eksplisit atau pemetaan otomatis pemiliknya), atau null.
+ * Dipakai agar akses tetap 1:1: satu undangan hanya untuk satu akun pelanggan.
+ */
+export async function invitationHolder(admin: SessionUser, invitationId: string, exceptUserId: string): Promise<{ name: string; title: string } | null> {
+  const inv = await admin.db.from('invitations').select('title, website_id, owner_external_id').eq('id', invitationId).maybeSingle()
+  if (inv.error) throw dbError(inv.error)
+  if (!inv.data) return null
+  const title = (inv.data.title as string) || 'Tanpa judul'
+  const acc = await admin.db.from('invitation_access').select('user_id, profiles(username, display_name)').eq('invitation_id', invitationId).neq('user_id', exceptUserId).limit(1).maybeSingle()
+  if (acc.error) throw dbError(acc.error)
+  if (acc.data) return { name: holderName(acc.data.profiles as { username?: string; display_name?: string } | null), title }
+  if (inv.data.owner_external_id) {
+    const map = await admin.db.from('owner_mappings').select('user_id, profiles(username, display_name)')
+      .eq('website_id', inv.data.website_id as string).eq('external_owner_id', inv.data.owner_external_id as string).neq('user_id', exceptUserId).limit(1).maybeSingle()
+    if (map.error) throw dbError(map.error)
+    if (map.data) return { name: holderName(map.data.profiles as { username?: string; display_name?: string } | null), title }
+  }
+  return null
+}
+
+export function invitationTaken(h: { name: string; title: string }) {
+  return createError({ statusCode: 409, statusMessage: 'invitation_taken', data: { message: `Undangan "${h.title}" sudah dipakai akun ${h.name}. ${ONE_ACCOUNT_MESSAGE} Cabut dulu aksesnya untuk mengganti.` } })
+}
 
 /** Akses yang sudah dimiliki akun (undangan eksplisit atau pemetaan otomatis), untuk pesan yang jelas. */
 export async function existingAccess(admin: SessionUser, userId: string): Promise<{ invitationId: string | null; title: string | null; mapped: boolean }> {
@@ -42,6 +70,10 @@ export async function syncUserAccess(admin: SessionUser, userId: string, ids: st
     const mapped = await admin.db.from('owner_mappings').select('id').eq('user_id', userId).maybeSingle()
     if (mapped.error) throw dbError(mapped.error)
     if (mapped.data) throw createError({ statusCode: 409, statusMessage: 'user_has_access', data: { message: 'Akun ini sudah mendapat undangan lewat pemetaan otomatis (menu Koneksi). ' + ONE_INVITATION_MESSAGE } })
+    for (const id of add) {
+      const holder = await invitationHolder(admin, id, userId)
+      if (holder) throw invitationTaken(holder)
+    }
   }
   // Cabut dulu, baru beri: satu akun hanya boleh memegang satu baris akses.
   if (remove.length) {

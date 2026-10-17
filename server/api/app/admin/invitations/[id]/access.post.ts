@@ -11,6 +11,8 @@ export default defineEventHandler(async (event) => {
   if (has.mapped) {
     throw createError({ statusCode: 409, statusMessage: 'user_has_access', data: { message: `Akun ini sudah mendapat undangan lewat pemetaan otomatis. ${ONE_INVITATION_MESSAGE}` } })
   }
+  const holder = await invitationHolder(user, id, userId)
+  if (holder) throw invitationTaken(holder)
   const { error } = await user.db.from('invitation_access').insert({ invitation_id: id, user_id: userId, granted_by: user.id })
   if (error) throw dbError(error)
   await audit(user, 'access.grant', id, { user_id: userId })

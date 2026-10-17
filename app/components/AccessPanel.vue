@@ -114,8 +114,9 @@ async function revoke(userId: string) {
           </li>
         </ul>
       </div>
-      <form class="grant" @submit.prevent="grant">
-        <p class="text-caption">Satu akun pelanggan hanya untuk satu undangan. Akun yang sudah punya undangan tidak dapat dipilih.</p>
+      <p v-if="total" class="text-caption" data-testid="access-full">Satu undangan hanya untuk satu akun pelanggan. Cabut akses di atas untuk menggantinya dengan akun lain.</p>
+      <form v-else class="grant" @submit.prevent="grant">
+        <p class="text-caption">Satu undangan hanya untuk satu akun, dan satu akun hanya untuk satu undangan. Akun yang sudah punya undangan tidak dapat dipilih.</p>
         <label for="grant-user" class="field-label">Tambah pelanggan</label>
         <select id="grant-user" v-model="selected" class="select" :disabled="!available.length">
           <option value="">{{ available.length ? 'Pilih akun pelanggan' : 'Tidak ada akun pelanggan yang tersedia' }}</option>
