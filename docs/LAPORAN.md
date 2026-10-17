@@ -326,6 +326,26 @@ Hasil pindai setelah perbaikan: tidak ada teks/kontrol yang mepet tepi di semua 
 - Desktop & tablet tidak berubah (tetap bergulir otomatis halus, berhenti saat disorot).
 - Uji: e2e ponsel (maks. 4 baris, tidak bergerak, tidak ada gulir di dalam kartu, tombol tampilkan semua) & desktop (tetap bergulir otomatis).
 
+## 5ad. Pemeriksaan siap deploy & kompatibilitas widget (17 Okt 2026)
+
+**Alamat API otomatis.** Di Vercel `NUXT_PUBLIC_APP_URL` kosong (`appUrl:""` di HTML live), sehingga URL API di menu Koneksi, tautan login di pesan WhatsApp, dan tautan reset password mengikuti domain yang dibuka — tidak pernah localhost. Nilai lokal/http selalu diabaikan. Pindah domain: semua di sisi MDUNDIG otomatis; yang tetap manual: URL API di pengaturan konektor ApeironKit di WordPress, Site URL/Redirect URLs di Supabase Auth (khusus reset lewat email). Lihat README → Domain & subdomain.
+
+**Widget Form Order (builder Elementor) ↔ server** — dicocokkan dengan kode plugin (`FormOrderController`, `FieldSchema`, `FormOrderSettings::send_to_api`):
+| | Plugin mengirim | Server menerima |
+|---|---|---|
+| Jumlah field | ≤ 200 | ≤ 200 |
+| Kunci field | sanitize_key ≤ 64 (custom `field_<id>`, `bank_*_1..10`, `love_extra_1..10_*`) | `[A-Za-z0-9_.:-]{1,128}` |
+| Nilai teks | ≤ 1024 (textarea ≤ 4000) | ≤ 4000 |
+| Pilihan (checkbox) | ≤ 50 × 512 | ≤ 50 × 512 |
+| Label | ≤ 160 (+ konteks "Bagian: Label (2)") | ≤ 500, ≤ 400 label |
+Section/field baru buatan admin di widget diterima & tampil (tidak ada field hilang): label kembar antar-step → bagian sesuai nama step; label unik → "Lainnya"; rekening 1–10 & cerita tambahan 1–10 terurut. Diperkuat: jenis cerita baru (`love_<nama>_*`) tetap masuk "Cerita Cinta" (nama dari label judulnya), dan kode pilihan bawaan "Undangan dari pihak" tampil "Pria/Wanita". Data live (55 field) terpetakan benar ke semua bagian. Uji baru `tests/unit/widgetCompat.test.ts` mensimulasikan payload widget + tambahan builder + batas maksimum.
+
+Catatan: untuk pilihan (dropdown/radio/checkbox) buatan sendiri, plugin mengirim **kode opsi**, bukan teks tampilannya. Agar terbaca jelas di MDUNDIG, tulis opsi tanpa kode terpisah (mis. `Paket Gold`, bukan `gold|Paket Gold`).
+
+**Widget Daftar Hadiah ↔ server**: hadiah ≤ 200, nama ≤ 600, deskripsi ≤ 20.000, jumlah ≤ 1.000.000, gambar http/https — batas server sama/lebih longgar dari plugin.
+
+**Live**: commit terakhir terdeploy (status Vercel di GitHub: success). Log Supabase: tidak ada kueri gagal sejak perbaikan 5ab; 2 kueri 400 pada 06:24 UTC terjadi sebelum kolom `whatsapp_sent_at` diterapkan (sudah selesai).
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

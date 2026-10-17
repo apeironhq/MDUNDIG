@@ -17,7 +17,8 @@ export function displayValue(v: string | string[]): string {
 // Cerita Cinta dari widget: love_<cerita>_<title|date|story>. Label bawaannya terpecah ("Pertama Bertemu: Judul Perjalanan",
 // "Tanggal Pertama Bertemu", "Cerita Pertama Bertemu") sehingga dulu tampil sebagai bagian terpisah + masuk "Lainnya".
 // Kini semuanya satu bagian "Cerita Cinta", dikelompokkan per cerita dengan urutan kronologis.
-const LOVE_RE = /^love_(meeting|engagement|journey|extra_(\d+))_(title|date|story)$/
+// Jenis cerita baru dari builder widget (love_<nama>_*) ikut masuk; namanya diambil dari awalan label judulnya.
+const LOVE_RE = /^love_(.+?)_(title|date|story)$/
 const LOVE_STORY: Record<string, { name: string; rank: number }> = {
   meeting: { name: 'Pertama Bertemu', rank: 1 },
   engagement: { name: 'Pertunangan', rank: 2 },
@@ -26,16 +27,41 @@ const LOVE_STORY: Record<string, { name: string; rank: number }> = {
 const LOVE_FIELD: Record<string, { name: string; rank: number }> = { title: { name: 'Judul', rank: 0 }, date: { name: 'Tanggal', rank: 1 }, story: { name: 'Cerita', rank: 2 } }
 export const LOVE_SECTION = 'Cerita Cinta'
 
-function loveStory(key: string): { group: string; field: string; rank: number } | null {
+const humanize = (s: string) => { const t = s.replace(/_/g, ' ').trim(); return t.charAt(0).toUpperCase() + t.slice(1) }
+
+/** `names`: nama cerita untuk jenis yang tidak dikenal (dari label judul, mis. "Lamaran: Judul Perjalanan"). */
+function loveStory(key: string, names?: Map<string, string>): { group: string; field: string; rank: number } | null {
   const m = LOVE_RE.exec(key)
   if (!m) return null
-  const story = m[2] ? { name: `Cerita tambahan ${m[2]}`, rank: 10 + Number(m[2]) } : LOVE_STORY[m[1]!]!
-  const field = LOVE_FIELD[m[3]!]!
+  const type = m[1]!
+  const extra = /^extra_(\d+)$/.exec(type)
+  const story = LOVE_STORY[type]
+    ?? (extra ? { name: `Cerita tambahan ${extra[1]}`, rank: 10 + Number(extra[1]) } : { name: names?.get(type) ?? humanize(type), rank: 5 })
+  const field = LOVE_FIELD[m[2]!]!
   return { group: story.name, field: field.name, rank: story.rank * 10 + field.rank }
 }
 
-export function splitLabel(key: string, label: string): { section: string; field: string; group?: string } {
-  const love = loveStory(key)
+/** Nama cerita jenis baru dari awalan label judulnya ("Lamaran: Judul Perjalanan" → "Lamaran"). */
+function loveNames(entries: OrderEntry[]): Map<string, string> {
+  const names = new Map<string, string>()
+  for (const e of entries) {
+    const m = /^love_(.+?)_title$/.exec(e.key)
+    const prefix = m && /^(.{1,40}?):\s+.+$/.exec(e.label)
+    if (m && prefix && prefix[1]!.trim() !== LOVE_SECTION) names.set(m[1]!, prefix[1]!.trim())
+  }
+  return names
+}
+
+// Nilai pilihan yang dikirim widget berupa kode opsi; kode bawaan diterjemahkan ke teks yang dibaca manusia.
+const VALUE_LABELS: Record<string, Record<string, string>> = { invitation_side: { pria: 'Pria', wanita: 'Wanita' } }
+export function readableValue(key: string, value: string | string[]): string | string[] {
+  const map = VALUE_LABELS[key]
+  if (!map) return value
+  return Array.isArray(value) ? value.map((v) => map[v] ?? v) : (map[value] ?? value)
+}
+
+export function splitLabel(key: string, label: string, names?: Map<string, string>): { section: string; field: string; group?: string } {
+  const love = loveStory(key, names)
   if (love) return { section: LOVE_SECTION, field: love.field, group: love.group }
   const bank = /^bank_(name|account|owner)_(\d+)$/.exec(key)
   if (bank) return { section: `Rekening ${bank[2]}`, field: label.replace(/\s*\d+$/, '') }
@@ -68,10 +94,11 @@ function sectionRank(title: string): number {
 
 export function groupOrderEntries(entries: OrderEntry[]): OrderSection[] {
   const map = new Map<string, OrderField[]>()
+  const names = loveNames(entries)
   for (const e of entries) {
-    const { section, field, group } = splitLabel(e.key, e.label)
+    const { section, field, group } = splitLabel(e.key, e.label, names)
     const list = map.get(section) ?? []
-    list.push({ ...e, field, empty: isEmptyValue(e.value), ...(group ? { group } : {}) })
+    list.push({ ...e, value: readableValue(e.key, e.value), field, empty: isEmptyValue(e.value), ...(group ? { group } : {}) })
     map.set(section, list)
   }
   return [...map.entries()]
@@ -87,7 +114,7 @@ export function orderSummary(entries: OrderEntry[], max = 3): string {
   const pick = (keys: string[], label: string) => {
     for (const k of keys) {
       const e = byKey.get(k)
-      if (e && !isEmptyValue(e.value)) { parts.push(`${label}: ${displayValue(e.value)}`); used.add(k); return }
+      if (e && !isEmptyValue(e.value)) { parts.push(`${label}: ${displayValue(readableValue(k, e.value))}`); used.add(k); return }
     }
   }
   pick(['customer_name'], 'Pemesan')
@@ -97,7 +124,7 @@ export function orderSummary(entries: OrderEntry[], max = 3): string {
     if (parts.length >= max) break
     if (used.has(e.key) || isEmptyValue(e.value)) continue
     const s = splitLabel(e.key, e.label)
-    parts.push(`${s.group ? `${s.group} — ${s.field}` : s.field}: ${displayValue(e.value)}`)
+    parts.push(`${s.group ? `${s.group} — ${s.field}` : s.field}: ${displayValue(readableValue(e.key, e.value))}`)
   }
   return parts.slice(0, max).join(' · ')
 }

@@ -34,7 +34,7 @@ scripts/             bootstrap admin, pemeriksaan secret bundle
 
 1. **Supabase** — project yang dipakai: `xksgdqwxqvxczzztgzuu` (ap-southeast-1). Migrasi di `supabase/migrations/` **sudah diterapkan** lewat connector. Untuk project lain: `supabase db push`, atau jalankan ketiga berkas berurutan di SQL Editor.
 2. **Supabase Auth** (Dashboard → Authentication):
-   - URL Configuration → *Site URL* = `NUXT_PUBLIC_APP_URL`; *Redirect URLs* tambahkan `https://DOMAIN/atur-password`.
+   - URL Configuration → *Site URL* = domain aplikasi (mis. `https://mdundig.vercel.app`); *Redirect URLs* tambahkan `https://DOMAIN/atur-password`.
    - Providers → Email: **matikan "Allow new users to sign up"** — semua akun dibuat langsung oleh admin di dashboard. Signup tetap tidak memberi akses apa pun walau dibiarkan aktif.
    - Password minimum Supabase bawaan 6 karakter; dashboard mewajibkan **minimal 8**.
    - SMTP hanya diperlukan bila ingin reset password lewat email; tanpa SMTP, admin mengatur ulang password dari dashboard.
@@ -78,7 +78,8 @@ Pelanggan hanya dapat melihat dan mengunduh laporan (PDF/CSV) Daftar Hadiah unda
 
 ## Domain & subdomain
 
-- **Aplikasi MDUNDIG** tidak terikat ke alamat `*.vercel.app`. Pakai domain atau subdomain sendiri (mis. `data.domainanda.com`) lewat Vercel → Settings → Domains, atau jalankan di server Node mana pun (`npm run build` lalu `node .output/server/index.mjs`, atau preset Nitro lain). Syarat dari plugin: **HTTPS publik, tanpa port, bukan localhost/IP**. Setelah domain aktif: isi `NUXT_PUBLIC_APP_URL` dengan domain itu dan tambahkan `https://DOMAIN/atur-password` ke Redirect URLs Supabase. URL API yang ditampilkan di menu Koneksi otomatis mengikuti domain ini.
+- **Aplikasi MDUNDIG** tidak terikat ke alamat `*.vercel.app`. Pakai domain atau subdomain sendiri (mis. `data.domainanda.com`) lewat Vercel → Settings → Domains, atau jalankan di server Node mana pun (`npm run build` lalu `node .output/server/index.mjs`, atau preset Nitro lain). Syarat dari plugin: **HTTPS publik, tanpa port, bukan localhost/IP**. URL API di menu Koneksi, tautan login di pesan WhatsApp, dan tautan reset password **otomatis mengikuti domain yang sedang dibuka** bila `NUXT_PUBLIC_APP_URL` dikosongkan (disarankan). Bila diisi, nilai itu yang dipakai (hanya HTTPS publik; localhost/http diabaikan) — ubah juga saat pindah domain.
+- **Saat pindah domain, yang tetap perlu diubah manual:** (1) URL API di pengaturan konektor ApeironKit pada setiap WordPress (salin ulang dari menu Koneksi; token tidak perlu diganti), (2) Supabase → Authentication → URL Configuration: Site URL & Redirect URLs `https://DOMAIN/atur-password` (hanya untuk akun yang memakai reset lewat email), (3) tautan login di pesan WhatsApp yang sudah terkirim tetap ke domain lama — domain `*.vercel.app` lama tetap aktif sehingga tautan lama masih bisa dibuka.
 - **Website WordPress** yang dihubungkan boleh domain utama, subdomain (`undangan.domain.com`), maupun instalasi subdirektori (`domain.com/undangan/`) atau multisite. Daftarkan setiap alamat beranda sebagai Website terpisah, lalu buat Token Website masing-masing.
 
 ## Pengembangan & pengujian
