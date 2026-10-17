@@ -63,6 +63,11 @@ watch(accessEl, (cmp) => {
   accessRo.observe(cmp.$el)
 }, { flush: 'post' })
 onBeforeUnmount(() => accessRo?.disconnect())
+// Gambar hadiah diambil langsung dari WordPress. Bila gagal dimuat (mis. http:// di dashboard HTTPS, atau situs
+// lokal seperti http://aperion.local yang hanya ada di komputer sendiri) tampilkan ikon, bukan gambar rusak.
+const failedImg = reactive(new Set<string>())
+const insecureImages = computed(() => import.meta.client && window.location.protocol === 'https:'
+  && activeGifts.value.some((g) => g.image_url.startsWith('http://')))
 const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g.id, name: g.active ? g.name : `${g.name} (dihapus)` })))
 </script>
 
@@ -109,7 +114,7 @@ const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g
                   <li v-for="g in activeGifts" :key="g.id" class="gift-grid gift-row">
                     <div class="g-name">
                       <span class="thumb">
-                        <img v-if="g.image_url" :src="g.image_url" :alt="`Foto ${g.name}`" width="44" height="44" loading="lazy" referrerpolicy="no-referrer">
+                        <img v-if="g.image_url && !failedImg.has(g.id)" :src="g.image_url" :alt="`Foto ${g.name}`" width="44" height="44" loading="lazy" referrerpolicy="no-referrer" @error="failedImg.add(g.id)">
                         <Gift v-else :size="18" aria-hidden="true" />
                       </span>
                       <div class="min-w-0"><span class="g-title block truncate">{{ g.name }}</span><span v-if="g.description" class="block text-caption line-clamp-1">{{ g.description }}</span></div>
@@ -129,6 +134,7 @@ const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g
                 </ul>
               </AutoScrollList>
             </div>
+            <p v-if="insecureImages" class="catalog-note text-caption" data-testid="insecure-images">Sebagian gambar berasal dari alamat <span class="text-mono">http://</span> sehingga diblokir browser di dashboard HTTPS. Gambar akan tampil setelah website WordPress memakai HTTPS dan dapat diakses publik.</p>
             <p v-if="inactiveGifts.length" class="catalog-note text-caption">{{ inactiveGifts.length }} hadiah telah dihapus dari katalog. Riwayat reservasinya tetap tersimpan.</p>
           </template>
         </section>

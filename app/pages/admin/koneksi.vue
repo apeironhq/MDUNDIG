@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hostOf } from '../../../shared/appUrl'
 import { Activity, Ban, KeyRound, Link2, Pencil, Plus, RotateCw, Trash2, TriangleAlert } from 'lucide-vue-next'
 
 definePageMeta({ admin: true })
@@ -11,7 +12,10 @@ const toast = useToast()
 const route = useRoute()
 const websites = ref<Website[]>([])
 const websiteId = ref(typeof route.query.website === 'string' ? route.query.website : '')
-const urls = ref<{ daftar_hadiah_url: string; form_order_url: string; https: boolean } | null>(null)
+const urls = ref<{ daftar_hadiah_url: string; form_order_url: string; https: boolean; ignored_app_url?: string | null } | null>(null)
+// Website yang alamatnya sama dengan alamat MDUNDIG sendiri tidak akan pernah terhubung (bukan alamat WordPress).
+const appHost = import.meta.client ? window.location.host.toLowerCase() : ''
+const pointsToApp = computed(() => !!website.value && hostOf(website.value.site_url) === appHost)
 const tokens = ref<Token[]>([])
 const loading = ref(true)
 const tokensLoading = ref(false)
@@ -160,6 +164,11 @@ function closeReveal() { revealed.value = null }
               <p class="text-caption">Diperbarui setiap kali plugin mengirim permintaan</p>
             </div>
           </div>
+          <p v-if="pointsToApp" class="alert tone-err mx-5 mt-4" role="alert" data-testid="website-is-app">
+            <TriangleAlert :size="16" />
+            <span>Alamat website ini sama dengan alamat MDUNDIG sendiri, sehingga plugin tidak akan pernah terhubung. Ubah di menu
+              <NuxtLink :to="{ path: '/admin/website' }" class="underline">Website</NuxtLink> menjadi alamat beranda WordPress yang memakai ApeironKit.</span>
+          </p>
           <div class="card-body status-grid">
             <div><p class="text-caption">Website</p><p class="text-label break-all">{{ website.site_url }}</p></div>
             <div>
@@ -183,6 +192,8 @@ function closeReveal() { revealed.value = null }
             </div>
           </div>
           <div class="card-body flex flex-col gap-5">
+            <p v-if="urls.ignored_app_url" class="alert" data-testid="app-url-warning"><TriangleAlert :size="16" />
+              <span>Pengaturan <span class="text-mono">NUXT_PUBLIC_APP_URL</span> di server berisi <span class="text-mono">{{ urls.ignored_app_url }}</span> (bukan alamat HTTPS publik), jadi diabaikan. URL di bawah memakai alamat yang sedang dibuka. Perbarui variabel itu di Vercel (atau hapus), lalu redeploy.</span></p>
             <p v-if="!urls.https" class="alert"><TriangleAlert :size="16" /> Plugin hanya menerima URL HTTPS publik tanpa port. Pakai domain atau subdomain aplikasi yang sudah online.</p>
             <CopyField label="URL API Daftar Hadiah" :value="urls.daftar_hadiah_url" />
             <CopyField label="URL API Order Undangan" :value="urls.form_order_url" hint="Di plugin ApeironKit bagian ini bernama Form Order; URL-nya juga dapat dibentuk otomatis dari URL Daftar Hadiah." />

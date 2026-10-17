@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { resolveAppBase } from '../../shared/appUrl'
 definePageMeta({ layout: 'auth', public: true })
 useHead({ title: 'Lupa password — MDUNDIG' })
 
@@ -12,7 +13,7 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    const base = useRuntimeConfig().public.appUrl || window.location.origin
+    const base = resolveAppBase(useRuntimeConfig().public.appUrl, window.location.origin).base
     const { error: err } = await useSupabase().auth.resetPasswordForEmail(email.value.trim(), { redirectTo: `${base.replace(/\/+$/, '')}/atur-password` })
     if (err && err.status === 429) throw err
     // Respons sama untuk email terdaftar/tidak, agar tidak membocorkan akun.

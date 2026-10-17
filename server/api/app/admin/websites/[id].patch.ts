@@ -1,4 +1,5 @@
 import { normalizeSiteUrl } from '../../../../lib/contract'
+import { hostOf } from '../../../../../shared/appUrl'
 
 // Perubahan binding domain selalu eksplisit (reset_binding). Data undangan tidak dipindahkan.
 export default defineEventHandler(async (event) => {
@@ -14,6 +15,11 @@ export default defineEventHandler(async (event) => {
   if (body.site_url !== undefined) {
     const siteUrl = typeof body.site_url === 'string' ? normalizeSiteUrl(body.site_url) : null
     if (!siteUrl) throw badRequest('URL website tidak valid.')
+    // Cegah salah isi: alamat aplikasi MDUNDIG sendiri bukan alamat website WordPress.
+    const own = [hostOf(appBaseUrl(event)), getRequestURL(event, { xForwardedHost: true }).host.toLowerCase()]
+    if (own.includes(hostOf(siteUrl))) {
+      throw badRequest('Ini alamat aplikasi MDUNDIG, bukan website WordPress. Isi dengan alamat beranda WordPress yang memakai ApeironKit (mis. https://undangan-anda.com/).')
+    }
     patch.site_url = siteUrl
   }
   if (body.status !== undefined) {

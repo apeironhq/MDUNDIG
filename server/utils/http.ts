@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { resolveAppBase } from '../../shared/appUrl'
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -42,10 +43,16 @@ export async function readJson(event: H3Event): Promise<Record<string, unknown>>
   return body as Record<string, unknown>
 }
 
+/**
+ * Basis URL aplikasi: NUXT_PUBLIC_APP_URL bila HTTPS publik, selain itu domain yang sedang dibuka
+ * (mis. https://mdundig.vercel.app). Nilai lokal/http tidak pernah dipakai di server publik.
+ */
+export function appBase(event: H3Event): { base: string; ignored: string | null } {
+  const origin = getRequestURL(event, { xForwardedHost: true, xForwardedProto: true }).origin
+  return resolveAppBase(useRuntimeConfig().public.appUrl, origin)
+}
 export function appBaseUrl(event: H3Event): string {
-  const configured = useRuntimeConfig().public.appUrl
-  if (configured) return configured.replace(/\/+$/, '')
-  return getRequestURL(event).origin
+  return appBase(event).base
 }
 
 export function sendCsv(event: H3Event, filename: string, csv: string) {

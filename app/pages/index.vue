@@ -56,6 +56,8 @@ const statusSegments = computed(() => [
   { label: 'Terkonfirmasi', value: data.value?.status.confirmed ?? 0, color: C.blue },
   { label: 'Dibatalkan', value: data.value?.status.cancelled ?? 0, color: '#98a2b3' },
 ])
+// Gambar dari WordPress yang gagal dimuat (http:// di HTTPS / situs lokal) diganti ikon.
+const failedImg = reactive(new Set<string>())
 const topTotal = computed(() => Math.max(1, data.value?.kpis.reservations.total ?? 0))
 
 const AUDIT: Record<string, { title: string; icon: Component; color: string }> = {
@@ -157,7 +159,7 @@ const tint = (color: string) => ({ color, background: `color-mix(in srgb, ${colo
           <ul class="items">
             <li v-for="g in data.top_gifts" :key="g.gift_id" class="item">
               <span class="thumb">
-                <img v-if="g.image_url" :src="g.image_url" :alt="''" loading="lazy" referrerpolicy="no-referrer">
+                <img v-if="g.image_url && !failedImg.has(g.gift_id)" :src="g.image_url" :alt="''" loading="lazy" referrerpolicy="no-referrer" @error="failedImg.add(g.gift_id)">
                 <Gift v-else :size="18" aria-hidden="true" />
               </span>
               <div class="min-w-0 flex-1">

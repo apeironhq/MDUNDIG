@@ -206,6 +206,13 @@ Ini **bukan** angka produksi. Di Vercel `sin1` + Supabase `ap-southeast-1` akan 
 - Bar menu bawah (admin & pelanggan, ponsel) diubah menjadi **kapsul mengambang**: ujung bulat penuh, tanpa garis tepi, bayangan lembut menyebar. Punuk lebih landai & lebar; lingkaran aktif 54px dengan cahaya biru tipis, berjarak 7px dari tepi punuk. Label menu aktif berwarna biru; ikon lain abu gelap, label abu. Animasi pegas & "pop" tetap.
 - Revisi: tepi kiri-kanan bar kini sejajar persis dengan tepi kartu (jarak = padding halaman: 1rem di ≤ 640px, 1.5rem di 641–767px); cahaya lingkaran aktif dikecilkan menjadi bayangan sangat tipis.
 
+## 5s. Perbaikan koneksi di Vercel & gambar hadiah
+
+- **URL API localhost di Vercel**: `NUXT_PUBLIC_APP_URL` berisi `http://localhost:3000` (tersalin dari `.env` lokal) dipakai mentah-mentah. Kini nilai itu hanya dipakai bila HTTPS publik; selain itu URL API memakai domain yang sedang dibuka (mis. `https://mdundig.vercel.app`) dan halaman Koneksi menampilkan peringatan agar variabelnya diperbaiki. Tautan email lupa password memakai aturan yang sama.
+- **Website diisi alamat MDUNDIG sendiri** (`https://mdundig.vercel.app/` sebagai "Apeiron.ID") tidak akan pernah terhubung karena plugin mengirim alamat beranda WordPress. Kini ditolak saat menambah/mengubah website, dan halaman Koneksi memberi peringatan untuk data lama.
+- **Gambar hadiah** tidak disimpan di Supabase; gambar diambil langsung dari WordPress (`image_url`). Data saat ini berasal dari `http://aperion.local/…` (situs Local WP di komputer sendiri, http) sehingga diblokir browser di dashboard HTTPS dan tidak dapat diakses dari luar. Kini gambar yang gagal dimuat diganti ikon, dan katalog menjelaskan penyebabnya. Gambar tampil otomatis setelah WordPress online dengan HTTPS.
+- Uji: unit `appUrl` (4), e2e peringatan Koneksi & fallback gambar. Playwright 114 lulus + 18 dilewati sengaja, vitest 92/92.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

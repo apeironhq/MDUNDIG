@@ -136,7 +136,7 @@ async function resetBinding() {
         <div class="field">
           <label for="w-url" class="field-label">URL beranda WordPress</label>
           <input id="w-url" v-model="form.site_url" class="input" type="url" placeholder="https://domain.com/" required>
-          <p class="field-hint">Sama dengan "Alamat Situs" WordPress, termasuk subdirektori bila ada.</p>
+          <p class="field-hint">Sama dengan "Alamat Situs" di WordPress (Pengaturan → Umum), termasuk subdirektori bila ada. Bukan alamat MDUNDIG.</p>
         </div>
         <div v-if="editing" class="field">
           <label for="w-status" class="field-label">Status</label>

@@ -200,3 +200,33 @@ test('pelanggan: tidak ada tombol tambah/ubah/hapus', async ({ page }) => {
   await expect(page.getByRole('button', { name: /^Hapus reservasi/ })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Unduh PDF' })).toBeVisible()
 })
+
+test('koneksi: peringatan bila APP_URL lokal diabaikan & bila website diisi alamat MDUNDIG sendiri', async ({ page }) => {
+  await installMocks(page, 'admin')
+  // Meniru server Vercel yang env-nya masih http://localhost:3000, dan website yang salah diisi alamat aplikasi.
+  await page.route('**/api/app/admin/connection', (r) => r.fulfill({ json: {
+    daftar_hadiah_url: 'https://mdundig.vercel.app/api/daftar-hadiah', form_order_url: 'https://mdundig.vercel.app/api/form-order', https: true, ignored_app_url: 'http://localhost:3000',
+  } }))
+  await page.route('**/api/app/admin/websites', (r) => r.request().method() === 'GET'
+    ? r.fulfill({ json: { items: [{ id: '22222222-2222-4222-8222-222222222222', name: 'Apeiron.ID', site_url: `${new URL(page.url() || 'http://127.0.0.1:3123').origin}/`, external_site_id: null, bound_at: null, status: 'active', created_at: '2026-10-01T00:00:00Z', active_tokens: 1, last_used_at: null }] } })
+    : r.fallback())
+  await login(page, 'admin')
+  await page.goto('/admin/koneksi')
+  await expect(page.getByTestId('app-url-warning')).toContainText('http://localhost:3000')
+  await expect(page.getByRole('textbox', { name: 'URL API Daftar Hadiah' })).toHaveValue('https://mdundig.vercel.app/api/daftar-hadiah')
+  await expect(page.getByTestId('website-is-app')).toContainText('sama dengan alamat MDUNDIG')
+})
+
+test('gambar hadiah yang gagal dimuat diganti ikon (bukan gambar rusak)', async ({ page }) => {
+  await installMocks(page, 'admin')
+  await page.route('**/api/app/invitations/11111111-1111-4111-8111-111111111111', (r) => r.fulfill({ json: {
+    invitation: { id: '11111111-1111-4111-8111-111111111111', title: 'Andi & Sari', website_name: 'Undangan Utama', gift_count: 1, reservation_count: 0, created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-16T08:00:00.000Z' },
+    registries: [],
+    gifts: [{ id: 'g1', registry_id: 'x', gift_key: 'gift-1', name: 'Rice Cooker', description: '', image_url: 'http://tidak-ada.invalid/rice.webp', initial_quantity: 5, capacity: 4, manual_status: 'available', active: true, reserved_quantity: 1, available_quantity: 3 }],
+  } }))
+  await login(page, 'admin')
+  await page.goto('/daftar-hadiah/11111111-1111-4111-8111-111111111111')
+  const list = page.getByRole('region', { name: 'Daftar katalog hadiah' })
+  await expect(list.getByText('Rice Cooker').first()).toBeVisible()
+  await expect(list.locator('img')).toHaveCount(0)
+})
