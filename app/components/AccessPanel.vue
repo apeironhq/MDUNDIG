@@ -1,0 +1,137 @@
+<script setup lang="ts">
+import { UserPlus, Users, X } from 'lucide-vue-next'
+
+// Khusus admin: siapa yang dapat melihat satu undangan (akses eksplisit + pemetaan pemilik), versi ringkas untuk kolom samping.
+const props = defineProps<{ invitationId: string }>()
+const emit = defineEmits<{ changed: []; count: [total: number] }>()
+interface Person { username?: string | null; email: string; display_name: string }
+interface Access {
+  owner_external_id: string | null
+  explicit: Array<{ user_id: string; created_at: string; profiles: Person | null }>
+  mapped: Array<{ id: string; user_id: string; profiles: Person | null }>
+}
+const api = useApi()
+const toast = useToast()
+const data = ref<Access | null>(null)
+const users = ref<Array<{ id: string; username: string | null; email: string; display_name: string; role: string }>>([])
+const loading = ref(true)
+const selected = ref('')
+const busy = ref(false)
+const removing = ref('')
+
+// Email internal (akun username saja) tidak ditampilkan.
+const visibleEmail = (email?: string) => (email && !email.endsWith('@akun.mdundig.invalid') ? email : '')
+const nameOf = (p: Person | null) => p?.display_name || p?.username || visibleEmail(p?.email) || 'Akun'
+const subOf = (p: Person | null) => [p?.username, visibleEmail(p?.email)].filter(Boolean).join(' · ')
+
+async function load() {
+  loading.value = true
+  try {
+    const [access, people] = await Promise.all([
+      api.request<Access>(`/api/app/admin/invitations/${props.invitationId}/access`),
+      api.request<{ items: typeof users.value }>('/api/app/admin/users', { query: { per_page: 100 } }),
+    ])
+    data.value = access
+    users.value = people.items.filter((u) => u.role === 'customer')
+    emit('count', access.explicit.length + access.mapped.length)
+  } catch (err) {
+    toast.error(errorMessage(err, 'Hak akses gagal dimuat.'))
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(load)
+
+const grantedIds = computed(() => new Set((data.value?.explicit ?? []).map((e) => e.user_id)))
+const candidates = computed(() => users.value.filter((u) => !grantedIds.value.has(u.id)))
+const total = computed(() => (data.value?.explicit.length ?? 0) + (data.value?.mapped.length ?? 0))
+
+async function grant() {
+  if (!selected.value || busy.value) return
+  busy.value = true
+  try {
+    await api.request(`/api/app/admin/invitations/${props.invitationId}/access`, { method: 'POST', body: { user_id: selected.value } })
+    toast.success('Akses pelanggan ditambahkan.')
+    selected.value = ''
+    await load()
+    emit('changed')
+  } catch (err) {
+    toast.error(errorMessage(err, 'Akses gagal ditambahkan.'))
+  } finally {
+    busy.value = false
+  }
+}
+async function revoke(userId: string) {
+  if (removing.value) return
+  removing.value = userId
+  try {
+    await api.request(`/api/app/admin/invitations/${props.invitationId}/access/${userId}`, { method: 'DELETE' })
+    toast.success('Akses pelanggan dicabut.')
+    await load()
+    emit('changed')
+  } catch (err) {
+    toast.error(errorMessage(err, 'Akses gagal dicabut.'))
+  } finally {
+    removing.value = ''
+  }
+}
+</script>
+
+<template>
+  <section class="card panel" aria-labelledby="access-title" data-testid="access-panel">
+    <div class="card-header">
+      <div>
+        <h2 id="access-title" class="flex items-center gap-2"><Users :size="18" /> Akses pelanggan</h2>
+        <p class="text-caption">Akun yang dapat melihat &amp; mengunduh</p>
+      </div>
+      <span v-if="data" class="badge">{{ total }} akun</span>
+    </div>
+    <LoadingRows v-if="loading" :rows="2" />
+    <div v-else-if="data" class="card-body panel-body flex flex-col gap-4">
+      <p v-if="!total" class="text-caption">Belum ada pelanggan. Saat ini hanya admin yang dapat melihat undangan ini.</p>
+      <ul v-if="data.explicit.length" class="people" aria-label="Pelanggan dengan akses">
+        <li v-for="e in data.explicit" :key="e.user_id">
+          <FaceAvatar :seed="e.user_id" :name="nameOf(e.profiles)" :size="34" />
+          <span class="min-w-0 flex-1">
+            <span class="block truncate who">{{ nameOf(e.profiles) }}</span>
+            <span v-if="subOf(e.profiles)" class="block truncate text-caption">{{ subOf(e.profiles) }}</span>
+          </span>
+          <button class="btn btn-ghost btn-sm btn-icon" type="button" title="Cabut akses" :aria-label="`Cabut akses ${nameOf(e.profiles)}`"
+            :disabled="removing === e.user_id" @click="revoke(e.user_id)"><X :size="16" /></button>
+        </li>
+      </ul>
+      <div v-if="data.mapped.length" class="flex flex-col gap-2">
+        <p class="text-caption">Otomatis dari ID pemilik <span class="text-mono">{{ data.owner_external_id }}</span></p>
+        <ul class="people" aria-label="Pelanggan dari pemetaan otomatis">
+          <li v-for="m in data.mapped" :key="m.id">
+            <FaceAvatar :seed="m.user_id" :name="nameOf(m.profiles)" :size="34" />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate who">{{ nameOf(m.profiles) }}</span>
+              <span v-if="subOf(m.profiles)" class="block truncate text-caption">{{ subOf(m.profiles) }}</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+      <form class="grant" @submit.prevent="grant">
+        <label for="grant-user" class="field-label">Tambah pelanggan</label>
+        <select id="grant-user" v-model="selected" class="select" :disabled="!candidates.length">
+          <option value="">{{ candidates.length ? 'Pilih akun pelanggan' : 'Semua pelanggan sudah punya akses' }}</option>
+          <option v-for="u in candidates" :key="u.id" :value="u.id">{{ [u.username, u.display_name].filter(Boolean).join(' — ') || u.email }}</option>
+        </select>
+        <AsyncButton type="submit" :loading="busy" :disabled="!selected"><UserPlus :size="16" /> Beri akses</AsyncButton>
+      </form>
+    </div>
+  </section>
+</template>
+
+<style scoped>
+.panel { display: flex; flex-direction: column; min-height: 0; }
+.panel > .card-header { flex-shrink: 0; }
+.panel-body { flex: 1; min-height: 0; overflow-y: auto; }
+.people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.people li { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0; border-bottom: 1px solid var(--border); }
+.people li:first-child { padding-top: 0; }
+.people li:last-child { border-bottom: 0; }
+.who { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--text-heading); }
+.grant { display: flex; flex-direction: column; gap: 0.5rem; padding-top: 0.25rem; }
+</style>
