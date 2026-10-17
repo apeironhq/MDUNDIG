@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Gift, KeyRound, Pencil, Trash2, UserPlus, UserRo
 definePageMeta({ admin: true })
 useHead({ title: 'Pengguna & Akses — MDUNDIG' })
 
-interface UserRow { id: string; username: string | null; email: string; display_name: string; role: 'admin' | 'customer'; created_at: string; access_count?: number }
+interface UserRow { id: string; username: string | null; email: string; display_name: string; role: 'admin' | 'customer'; created_at: string; access_count?: number; access_title?: string | null }
 interface InvitationOption { id: string; title: string; website_name: string | null }
 
 const api = useApi()
@@ -67,7 +67,7 @@ async function createAccount() {
       method: 'POST', body: { username: account.username, display_name: account.display_name, email: account.email, password: account.password, invitation_ids: account.invitation_ids },
     })
     if (res.access_failed) toast.error(`Akun ${res.username} dibuat, tetapi akses undangan gagal disimpan. Atur lewat tombol Akses.`)
-    else toast.success(res.granted ? `Akun ${res.username} dibuat dengan akses ke ${res.granted} undangan.` : `Akun ${res.username} dibuat. Atur undangannya lewat tombol Akses.`)
+    else toast.success(res.granted ? `Akun ${res.username} dibuat dan dapat melihat undangan yang dipilih.` : `Akun ${res.username} dibuat. Atur undangannya lewat tombol Akses.`)
     createOpen.value = false
     Object.assign(account, { username: '', display_name: '', email: '', password: '', confirm: '', invitation_ids: [] })
     await users.load()
@@ -180,7 +180,7 @@ async function saveAccess() {
     const res = await api.request<{ granted: number; revoked: number; total: number }>(`/api/app/admin/users/${accessTarget.value.id}/access`, {
       method: 'PUT', body: { invitation_ids: accessIds.value },
     })
-    toast.success(res.granted || res.revoked ? `Akses disimpan: ${res.total} undangan.` : 'Tidak ada perubahan akses.')
+    toast.success(!res.granted && !res.revoked ? 'Tidak ada perubahan akses.' : res.total ? 'Akses undangan disimpan.' : 'Akses undangan dicabut.')
     accessTarget.value = null
     await users.load()
   } catch (err) {
@@ -222,7 +222,8 @@ async function saveAccess() {
               <td><span class="badge">{{ u.role === 'admin' ? 'Admin platform' : 'Pelanggan' }}</span></td>
               <td class="whitespace-nowrap">
                 <span v-if="u.role === 'admin'" class="text-caption">Semua</span>
-                <span v-else :class="{ 'text-caption': !u.access_count }">{{ u.access_count ? `${u.access_count} undangan` : 'Belum ada' }}</span>
+                <span v-else-if="u.access_count" class="access-title" :title="u.access_title || ''">{{ u.access_title || 'Tanpa judul' }}</span>
+                <span v-else class="text-caption">Belum ada</span>
               </td>
               <td class="whitespace-nowrap">{{ formatDate(u.created_at) }}</td>
               <td class="cell-actions">
@@ -266,7 +267,7 @@ async function saveAccess() {
           </div>
         </template>
         <fieldset v-else class="field">
-          <legend class="field-label">Undangan yang boleh dilihat <span class="text-caption">(opsional — bisa diatur nanti lewat tombol Akses)</span></legend>
+          <legend class="field-label">Undangan untuk akun ini <span class="text-caption">(pilih satu; opsional — bisa diatur nanti lewat tombol Akses)</span></legend>
           <InvitationPicker v-model="account.invitation_ids" :options="invitations" :loading="invitationsLoading" id-prefix="new-inv" />
         </fieldset>
         <p v-if="createError" class="alert tone-err" role="alert">{{ createError }}</p>
@@ -308,7 +309,7 @@ async function saveAccess() {
     <ConfirmDialog :open="!!deleteUser" title="Hapus akun?" :loading="deletingUser"
       :message="deleteUser ? `Akun ${label(deleteUser)} dihapus permanen beserta akses undangannya. Data undangan dan reservasi tidak terhapus.` : ''"
       @close="deleteUser = null" @confirm="confirmDeleteUser" />
-    <ModalDialog :open="!!accessTarget" :icon="Gift" title="Atur akses undangan" :subtitle="accessTarget ? `${label(accessTarget)} hanya melihat dan mengunduh undangan yang dicentang.` : ''"
+    <ModalDialog :open="!!accessTarget" :icon="Gift" title="Atur akses undangan" :subtitle="accessTarget ? `${label(accessTarget)} hanya melihat dan mengunduh satu undangan yang dipilih.` : ''"
       :closable="!accessSaving" @close="accessTarget = null">
       <form id="access-form" class="flex flex-col gap-4" novalidate data-testid="access-form" @submit.prevent="saveAccess">
         <InvitationPicker v-model="accessIds" :options="invitations" :loading="accessLoading || invitationsLoading" id-prefix="acc-inv" />
@@ -337,6 +338,7 @@ async function saveAccess() {
 </template>
 
 <style scoped>
+.access-title { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; color: var(--text-heading); }
 .steps { display: flex; gap: 0.5rem; list-style: none; margin: 0 0 1.25rem; padding: 0; }
 .steps li { flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--r); font-size: var(--fs-label); color: var(--text-muted); }
 .steps li.active { border-color: var(--brand); color: var(--text-heading); font-weight: var(--fw-medium); }

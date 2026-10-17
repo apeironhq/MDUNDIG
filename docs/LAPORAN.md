@@ -228,6 +228,13 @@ Bug & perbaikan:
 - **Layar pembuka** berlogo saat aplikasi dimuat (tidak ada layar putih kosong).
 - Uji: 2 tes performa baru (frame animasi, KPI tautan, waktu muat; font lokal & layar pembuka). Playwright 116 lulus + 22 dilewati sengaja, vitest 92/92.
 
+## 5u. Satu akun pelanggan = satu undangan
+
+- Migrasi `mdundig_one_invitation_per_user` **diterapkan** (data live dicek dulu: tidak ada akun dengan >1 undangan). Database menolak akses kedua untuk akun yang sama (`invitation_access_one_per_user`), membatasi satu pemetaan otomatis per akun, dan melarang akses eksplisit + pemetaan sekaligus. Satu undangan tetap boleh untuk beberapa akun (mis. mempelai pria & wanita).
+- Server: `PUT /users/:id/access` & `POST /users` maksimal satu undangan (dicek sebelum akun dibuat); ganti undangan = cabut lama lalu beri baru; beri akses dari detail undangan / pemetaan menolak akun yang sudah punya undangan dengan pesan yang menyebut judulnya.
+- Tampilan: pemilih undangan kini pilih-satu (radio) dengan opsi "Tanpa undangan"; kolom Undangan di Pengguna menampilkan judul undangannya; di detail undangan & pemetaan, akun yang sudah punya undangan tampil "(sudah: …)" dan tidak bisa dipilih.
+- Uji: DB 3 tes baru, e2e alur pilih/ganti/cabut. Playwright lulus semua (+ dilewati sengaja), vitest 95/95.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

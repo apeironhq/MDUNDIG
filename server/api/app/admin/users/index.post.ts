@@ -14,6 +14,8 @@ export default defineEventHandler(async (event) => {
   if (!email) throw badRequest('Alamat email tidak valid.')
   const displayName = typeof body.display_name === 'string' ? body.display_name.trim().slice(0, 120) : ''
   const invitationIds = invitationIdsParam(body.invitation_ids)
+  // Satu akun pelanggan = satu undangan; dicek sebelum akun dibuat.
+  if (invitationIds.length > 1) throw badRequest(ONE_INVITATION_MESSAGE + ' Pilih salah satu.')
 
   const service = useServiceClient()
   if (!service) {

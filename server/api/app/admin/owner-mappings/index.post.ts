@@ -12,6 +12,12 @@ export default defineEventHandler(async (event) => {
   const known = await user.db.from('invitations').select('id').eq('website_id', websiteId).eq('owner_external_id', owner).limit(1)
   if (known.error) throw dbError(known.error)
   if (!known.data?.length) throw badRequest('ID pemilik ini belum pernah dikirim WordPress untuk website tersebut.')
+  const has = await existingAccess(user, userId)
+  if (has.invitationId || has.mapped) {
+    throw createError({ statusCode: 409, statusMessage: 'user_has_access', data: { message: has.invitationId
+      ? `Akun ini sudah punya akses ke undangan "${has.title}". ${ONE_INVITATION_MESSAGE}`
+      : `Akun ini sudah punya pemetaan otomatis. ${ONE_INVITATION_MESSAGE}` } })
+  }
   const { data, error } = await user.db.from('owner_mappings')
     .insert({ website_id: websiteId, external_owner_id: owner, user_id: userId, created_by: user.id })
     .select('id').single()

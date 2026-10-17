@@ -16,10 +16,14 @@ export default defineEventHandler(async (event) => {
   // Jumlah undangan yang diberikan ke tiap akun pada halaman ini.
   const ids = (data ?? []).map((p) => p.id)
   const counts = new Map<string, number>()
+  const titles = new Map<string, string>()
   if (ids.length) {
-    const access = await user.db.from('invitation_access').select('user_id').in('user_id', ids).limit(10000)
+    const access = await user.db.from('invitation_access').select('user_id, invitations(title)').in('user_id', ids).limit(10000)
     if (access.error) throw dbError(access.error)
-    for (const row of access.data ?? []) counts.set(row.user_id, (counts.get(row.user_id) ?? 0) + 1)
+    for (const row of access.data ?? []) {
+      counts.set(row.user_id, (counts.get(row.user_id) ?? 0) + 1)
+      titles.set(row.user_id, (row.invitations as { title?: string } | null)?.title || 'Tanpa judul')
+    }
   }
   return {
     items: (data ?? []).map((p) => ({
@@ -27,6 +31,7 @@ export default defineEventHandler(async (event) => {
       email: isInternalEmail(p.email) ? '' : p.email,
       role: adminIds.has(p.id) ? 'admin' : 'customer',
       access_count: counts.get(p.id) ?? 0,
+      access_title: titles.get(p.id) ?? null,
     })),
     total: count ?? 0, page, per_page: size,
   }

@@ -224,7 +224,7 @@ test('admin default "admin" masuk dengan username → buat akun pelanggan → at
   await dialog.getByLabel('Password', { exact: true }).fill('rahasia-toko-1')
   await dialog.getByLabel('Ulangi password').fill('rahasia-toko-1')
   await dialog.getByRole('button', { name: 'Berikutnya' }).click()
-  await expect(dialog.getByText('Undangan yang boleh dilihat')).toBeVisible()
+  await expect(dialog.getByText('Undangan untuk akun ini')).toBeVisible()
   await dialog.getByRole('button', { name: 'Buat akun' }).click()
   await expect(page.getByTestId('toast')).toContainText('Akun toko.bunga dibuat')
   await expect(page.getByRole('cell', { name: 'toko.bunga', exact: true })).toBeVisible()
@@ -265,7 +265,7 @@ test('Daftar Hadiah: tab Undangan/Reservasi konsisten, tanpa warna dekoratif', a
   await expect(page).toHaveTitle(/MDUNDIG$/)
 })
 
-test('akses undangan: diatur per akun lewat popup centang (tanpa mengetik ID), aturan password terlihat', async ({ page }) => {
+test('akses undangan: satu akun = satu undangan, dipilih lewat popup (tanpa mengetik ID), aturan password terlihat', async ({ page }) => {
   const state = await installMocks(page, 'admin')
   await login(page, 'admin')
   await page.goto('/admin/pengguna')
@@ -277,21 +277,31 @@ test('akses undangan: diatur per akun lewat popup centang (tanpa mengetik ID), a
 
   await page.getByRole('button', { name: 'Atur akses undangan pelanggan1' }).click()
   const dlg = page.getByRole('dialog', { name: 'Atur akses undangan' })
+  // Pilih satu (radio): tidak ada centang ganda / "pilih semua".
+  await expect(dlg.getByRole('checkbox')).toHaveCount(0)
+  await expect(dlg.getByText(/Pilih semua/)).toHaveCount(0)
   await dlg.getByLabel('Cari undangan').fill('andi')
-  await expect(dlg.getByRole('checkbox', { name: /Rina & Doni/ })).toHaveCount(0)
-  await dlg.getByRole('checkbox', { name: /Andi & Sari/ }).check()
-  await expect(dlg.getByText('1 dipilih')).toBeVisible()
+  await expect(dlg.getByRole('radio', { name: /Rina & Doni/ })).toHaveCount(0)
+  await dlg.getByRole('radio', { name: /Andi & Sari/ }).check()
+  await expect(dlg.getByText('Dipilih: Andi & Sari')).toBeVisible()
   await dlg.getByRole('button', { name: 'Simpan akses' }).click()
-  await expect(page.getByTestId('toast')).toContainText('Akses disimpan: 1 undangan')
+  await expect(page.getByTestId('toast')).toContainText('Akses undangan disimpan')
   expect(state.grants).toEqual([{ invitation_id: '11111111-1111-4111-8111-111111111111', user_id: '00000000-0000-4000-8000-000000000002' }])
-  await expect(page.getByRole('row', { name: /pelanggan1/ }).getByText('1 undangan')).toBeVisible()
+  await expect(page.getByRole('row', { name: /pelanggan1/ }).getByText('Andi & Sari')).toBeVisible()
 
-  // Buka lagi: centang tersimpan; cabut dengan menghapus centang.
+  // Ganti ke undangan lain: akses lama otomatis diganti (tetap satu).
   await page.getByRole('button', { name: 'Atur akses undangan pelanggan1' }).click()
-  await expect(dlg.getByRole('checkbox', { name: /Andi & Sari/ })).toBeChecked()
-  await dlg.getByRole('checkbox', { name: /Andi & Sari/ }).uncheck()
+  await expect(dlg.getByRole('radio', { name: /Andi & Sari/ })).toBeChecked()
+  await dlg.getByRole('radio', { name: /Rina & Doni/ }).check()
   await dlg.getByRole('button', { name: 'Simpan akses' }).click()
-  await expect(page.getByTestId('toast')).toContainText('Akses disimpan: 0 undangan')
+  await expect(page.getByTestId('toast')).toContainText('Akses undangan disimpan')
+  expect(state.grants).toEqual([{ invitation_id: '55555555-5555-4555-8555-555555555555', user_id: '00000000-0000-4000-8000-000000000002' }])
+
+  // Cabut: pilih "Tanpa undangan".
+  await page.getByRole('button', { name: 'Atur akses undangan pelanggan1' }).click()
+  await dlg.getByRole('radio', { name: /Tanpa undangan/ }).check()
+  await dlg.getByRole('button', { name: 'Simpan akses' }).click()
+  await expect(page.getByTestId('toast')).toContainText('Akses undangan dicabut')
   expect(state.grants).toHaveLength(0)
 
   // Tambah akun sekaligus memilih undangan.
@@ -302,11 +312,10 @@ test('akses undangan: diatur per akun lewat popup centang (tanpa mengetik ID), a
   await add.getByLabel('Password', { exact: true }).fill('rahasia-sari-1')
   await add.getByLabel('Ulangi password').fill('rahasia-sari-1')
   await add.getByRole('button', { name: 'Berikutnya' }).click()
-  await add.getByRole('checkbox', { name: 'Pilih semua undangan' }).check()
-  await expect(add.getByText('2 dipilih')).toBeVisible()
+  await add.getByRole('radio', { name: /Andi & Sari/ }).check()
   await add.getByRole('button', { name: 'Buat akun' }).click()
-  await expect(page.getByTestId('toast')).toContainText('Akun sari.andi dibuat dengan akses ke 2 undangan')
-  await expect(page.getByRole('row', { name: /sari\.andi/ }).getByText('2 undangan')).toBeVisible()
+  await expect(page.getByTestId('toast')).toContainText('Akun sari.andi dibuat dan dapat melihat undangan yang dipilih')
+  await expect(page.getByRole('row', { name: /sari\.andi/ }).getByText('Andi & Sari')).toBeVisible()
   await noHorizontalOverflow(page)
 })
 

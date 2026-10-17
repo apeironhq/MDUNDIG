@@ -13,7 +13,7 @@ interface Access {
 const api = useApi()
 const toast = useToast()
 const data = ref<Access | null>(null)
-const users = ref<Array<{ id: string; username: string | null; email: string; display_name: string; role: string }>>([])
+const users = ref<Array<{ id: string; username: string | null; email: string; display_name: string; role: string; access_count?: number; access_title?: string | null }>>([])
 const loading = ref(true)
 const selected = ref('')
 const busy = ref(false)
@@ -44,6 +44,8 @@ onMounted(load)
 
 const grantedIds = computed(() => new Set((data.value?.explicit ?? []).map((e) => e.user_id)))
 const candidates = computed(() => users.value.filter((u) => !grantedIds.value.has(u.id)))
+// Satu akun = satu undangan: akun yang sudah memegang undangan lain tidak bisa dipilih.
+const available = computed(() => candidates.value.filter((u) => !u.access_count))
 const total = computed(() => (data.value?.explicit.length ?? 0) + (data.value?.mapped.length ?? 0))
 
 async function grant() {
@@ -113,10 +115,13 @@ async function revoke(userId: string) {
         </ul>
       </div>
       <form class="grant" @submit.prevent="grant">
+        <p class="text-caption">Satu akun pelanggan hanya untuk satu undangan. Akun yang sudah punya undangan tidak dapat dipilih.</p>
         <label for="grant-user" class="field-label">Tambah pelanggan</label>
-        <select id="grant-user" v-model="selected" class="select" :disabled="!candidates.length">
-          <option value="">{{ candidates.length ? 'Pilih akun pelanggan' : 'Semua pelanggan sudah punya akses' }}</option>
-          <option v-for="u in candidates" :key="u.id" :value="u.id">{{ [u.username, u.display_name].filter(Boolean).join(' — ') || u.email }}</option>
+        <select id="grant-user" v-model="selected" class="select" :disabled="!available.length">
+          <option value="">{{ available.length ? 'Pilih akun pelanggan' : 'Tidak ada akun pelanggan yang tersedia' }}</option>
+          <option v-for="u in candidates" :key="u.id" :value="u.id" :disabled="!!u.access_count">
+            {{ [u.username, u.display_name].filter(Boolean).join(' — ') || u.email }}{{ u.access_count ? ` (sudah: ${u.access_title || 'undangan lain'})` : '' }}
+          </option>
         </select>
         <AsyncButton type="submit" :loading="busy" :disabled="!selected"><UserPlus :size="16" /> Beri akses</AsyncButton>
       </form>

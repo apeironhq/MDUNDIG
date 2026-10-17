@@ -235,8 +235,9 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
     if (pw) { state.passwordResets.push(pw[1] as string); return json(route, { ok: true }) }
     if (path === '/api/app/admin/users') {
       const count = (id: string) => state.grants.filter((g) => g.user_id === id).length
+      const titleOf = (id: string) => { const g = state.grants.find((x) => x.user_id === id); return g ? String(state.invitations.find((i) => i.id === g.invitation_id)?.title ?? 'Tanpa judul') : null }
       const items = [{ ...USERS.admin, role: 'admin', created_at: '2026-10-01T00:00:00Z' }, { ...USERS.customer, role: 'customer', created_at: '2026-10-01T00:00:00Z' }, ...state.createdUsers]
-        .map((u) => ({ ...u, access_count: count(u.id) }))
+        .map((u) => ({ ...u, access_count: count(u.id), access_title: titleOf(u.id) }))
       return json(route, { items, total: items.length, page: 1, per_page: 50 })
     }
     if (path === '/api/app/admin/owner-mappings') return json(route, { items: [] })
@@ -246,6 +247,7 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
     if (userAccess && req.method() === 'PUT') {
       const uid = userAccess[1] as string
       const ids = (req.postDataJSON() as { invitation_ids: string[] }).invitation_ids
+      if (ids.length > 1) return json(route, { data: { message: 'Satu akun pelanggan hanya dapat mengakses satu undangan. Pilih salah satu.' } }, 400)
       const have = state.grants.filter((g) => g.user_id === uid).map((g) => g.invitation_id)
       state.grants = [...state.grants.filter((g) => g.user_id !== uid), ...ids.map((invitation_id) => ({ invitation_id, user_id: uid }))]
       state.mutations.push(`access.set:${ids.length}`)
@@ -255,6 +257,9 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
     if (access && req.method() === 'GET') {
       const all = [{ ...USERS.customer }, ...state.createdUsers]
       return json(route, { owner_external_id: null, mapped: [], explicit: state.grants.filter((g) => g.invitation_id === access[1]).map((g) => ({ user_id: g.user_id, created_at: '2026-10-16T10:00:00Z', profiles: all.find((u) => u.id === g.user_id) ?? null })) })
+    }
+    if (access && req.method() === 'POST' && state.grants.some((g) => g.user_id === (req.postDataJSON() as { user_id: string }).user_id && g.invitation_id !== access[1])) {
+      return json(route, { data: { message: 'Akun ini sudah punya akses ke undangan lain. Satu akun pelanggan hanya dapat mengakses satu undangan.' } }, 409)
     }
     if (access && req.method() === 'POST') { state.grants.push({ invitation_id: access[1] as string, user_id: (req.postDataJSON() as { user_id: string }).user_id }); return json(route, { ok: true }, 201) }
     if (access && req.method() === 'DELETE') { state.grants = state.grants.filter((g) => !(g.invitation_id === access[1] && g.user_id === access[2])); return json(route, { ok: true }) }

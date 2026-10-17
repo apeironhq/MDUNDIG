@@ -6,7 +6,7 @@ import { Link2, Trash2 } from 'lucide-vue-next'
 const props = defineProps<{ websiteId: string }>()
 interface Mapping { id: string; external_owner_id: string; created_at: string; profiles: { username: string | null; email: string; display_name: string } | null }
 interface OwnerId { owner_id: string; invitations: number; example_title: string }
-interface Customer { id: string; username: string | null; email: string; display_name: string; role: string }
+interface Customer { id: string; username: string | null; email: string; display_name: string; role: string; access_count?: number; access_title?: string | null }
 
 const api = useApi()
 const toast = useToast()
@@ -84,7 +84,7 @@ async function remove(id: string) {
             <option v-for="o in ownerIds" :key="o.owner_id" :value="o.owner_id">{{ o.owner_id }} ({{ o.invitations }} undangan)</option>
           </select></div>
         <div class="field"><label for="m-user" class="field-label">Akun pelanggan</label>
-          <select id="m-user" v-model="form.user_id" class="select"><option value="">Pilih akun</option><option v-for="u in customers" :key="u.id" :value="u.id">{{ label(u) }}</option></select></div>
+          <select id="m-user" v-model="form.user_id" class="select"><option value="">Pilih akun</option><option v-for="u in customers" :key="u.id" :value="u.id" :disabled="!!u.access_count">{{ label(u) }}{{ u.access_count ? ` (sudah: ${u.access_title || 'undangan lain'})` : '' }}</option></select></div>
         <AsyncButton type="submit" :loading="saving" :disabled="!form.external_owner_id || !form.user_id">Petakan</AsyncButton>
       </form>
       <ul v-if="mappings.length" class="mapping-list">
