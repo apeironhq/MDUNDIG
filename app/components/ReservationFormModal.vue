@@ -39,7 +39,7 @@ watch(() => props.open, async (open) => {
     admin_note: r?.admin_note ?? '', status: r?.status ?? 'confirmed',
   })
   if (!r && !props.invitationId && !invitations.value.length) {
-    try { invitations.value = (await api.request<{ items: typeof invitations.value }>('/api/app/invitations', { query: { per_page: 100 } })).items } catch { /* ditangani di bawah */ }
+    try { invitations.value = await fetchAllPages<(typeof invitations.value)[number]>(api.request, '/api/app/invitations') } catch { /* ditangani di bawah */ }
   }
   if (!r) await loadGifts(form.invitation_id)
 })

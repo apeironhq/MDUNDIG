@@ -28,11 +28,11 @@ async function load() {
     const [m, o, c] = await Promise.all([
       api.request<{ items: Mapping[] }>('/api/app/admin/owner-mappings', { query: { website: props.websiteId } }),
       api.request<{ items: OwnerId[] }>('/api/app/admin/owner-ids', { query: { website: props.websiteId } }),
-      api.request<{ items: Customer[] }>('/api/app/admin/users', { query: { per_page: 100 } }),
+      fetchAllPages<Customer>(api.request, '/api/app/admin/users'),
     ])
     mappings.value = m.items
     ownerIds.value = o.items
-    customers.value = c.items.filter((u) => u.role === 'customer')
+    customers.value = c.filter((u) => u.role === 'customer')
   } catch (err) {
     toast.error(errorMessage(err, 'Pemetaan gagal dimuat.'))
   } finally {

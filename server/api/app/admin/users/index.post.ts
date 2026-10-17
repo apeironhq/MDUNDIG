@@ -21,6 +21,14 @@ export default defineEventHandler(async (event) => {
   const invitationIds = invitationIdsParam(body.invitation_ids)
   // Satu akun pelanggan = satu undangan; dicek sebelum akun dibuat.
   if (invitationIds.length > 1) throw badRequest(ONE_INVITATION_MESSAGE + ' Pilih salah satu.')
+  // Akses 1:1: undangan harus ada dan belum dipegang akun lain (akun baru belum punya id → UUID kosong).
+  for (const id of invitationIds) {
+    const found = await user.db.from('invitations').select('id').eq('id', id).maybeSingle()
+    if (found.error) throw dbError(found.error)
+    if (!found.data) throw badRequest('Undangan tidak ditemukan. Muat ulang halaman lalu coba lagi.')
+    const holder = await invitationHolder(user, id, '00000000-0000-0000-0000-000000000000')
+    if (holder) throw invitationTaken(holder)
+  }
 
   const service = useServiceClient()
   if (!service) {

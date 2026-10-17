@@ -151,6 +151,7 @@ async function resetPassword() {
   try {
     await api.request(`/api/app/admin/users/${resetTarget.value.id}/password`, { method: 'POST', body: { password: newPassword.value } })
     const u = resetTarget.value
+    u.whatsapp_sent_at = null
     toast.success('Password diperbarui. Kirim akses terbaru kepada pengguna.')
     // Lanjut ke kirim akses lewat WhatsApp (username + password baru + tautan masuk).
     resetShare.value = {
@@ -406,7 +407,8 @@ async function saveAccess() {
     </ModalDialog>
     <ModalDialog :open="!!waTarget" :icon="WhatsAppIcon" title="Kirim akses lewat WhatsApp"
       :subtitle="waTarget ? `${label(waTarget)} · ${waTarget.whatsapp_sent_at ? 'sudah dikirim, boleh dikirim ulang' : 'belum dikirim'}` : ''" @close="waTarget = null">
-      <WhatsAppAccessPanel v-if="waTarget" :key="waTarget.id" :name="waTarget.display_name || waTarget.username || waTarget.email" :username="waTarget.username || waTarget.email"
+      <LoadingRows v-if="waTarget && invitationsLoading" :rows="3" />
+      <WhatsAppAccessPanel v-else-if="waTarget" :key="waTarget.id" :name="waTarget.display_name || waTarget.username || waTarget.email" :username="waTarget.username || waTarget.email"
         :password="null" :whatsapp="waTarget.whatsapp ?? null" :invitation-title="waTarget.access_title ?? null" :sender="waSender"
         :sent-at="waTarget.whatsapp_sent_at ?? null" :before-send="resetBeforeSend" @sent="markSent(waTarget.id, $event)" />
       <template #footer>

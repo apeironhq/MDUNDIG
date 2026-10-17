@@ -255,6 +255,21 @@ Bug & perbaikan:
 - Langkah tambah akun "2. Akses undangan" dipersingkat menjadi "2. Akses" agar tidak turun baris.
 - Uji: DB (1:1 eksplisit & pemetaan, status kirim), unit pesan tanpa password, e2e tombol biru/abu, kirim ulang dengan password baru, undangan terpakai tidak bisa dipilih, panel akses penuh.
 
+## 5x. Audit bug menyeluruh (17 Okt 2026)
+
+Diperiksa: typecheck, build, seluruh tes (unit, DB PostgreSQL 17, e2e desktop/tablet/ponsel), advisor keamanan & performa Supabase, integritas data live, hak baca kolom baru, situs Vercel live tanpa login (halaman, font, API, konsol browser), dan tinjauan kode fitur terbaru.
+
+Bug yang ditemukan & diperbaiki:
+1. **Tambah akun dengan undangan yang sudah dipakai**: akun tetap dibuat lalu aksesnya gagal. Kini server menolak (409 *invitation_taken*) **sebelum** akun dibuat.
+2. **Status WhatsApp setelah atur ulang password**: server sudah mengembalikan status ke "belum dikirim", tetapi tombol di tabel tetap abu-abu sampai halaman dimuat ulang. Kini langsung biru.
+3. **Popup kirim WhatsApp**: nama pengirim yang termuat belakangan bisa menimpa pesan yang sudah disunting. Kini popup tampil setelah datanya lengkap.
+4. **Endpoint `/api` yang salah ketik** dijawab halaman HTML berstatus 200 (terlihat "berhasil"). Kini 404 JSON "Endpoint tidak ditemukan."
+5. **Dropdown hanya memuat 100 data pertama** (pilih pelanggan di detail undangan & pemetaan otomatis, pilih undangan saat tambah reservasi manual). Kini memuat semua halaman.
+
+Dicek & aman (tidak diubah): data live konsisten dengan aturan 1:1 (tidak ada undangan ganda / akses ganda / data yatim); pelanggan hanya bisa membaca profilnya sendiri (nomor WhatsApp akun lain tidak terbaca); 4 fungsi admin `SECURITY DEFINER` menolak non-admin di baris pertama; endpoint baru menolak tanpa login (401); halaman login live tanpa error konsol.
+
+Catatan: `npm audit` melaporkan 11 temuan "high" pada dependensi turunan Nuxt (`braces` untuk pencarian file saat build, `node-forge` untuk sertifikat HTTPS server dev). Keduanya tidak berjalan di Vercel dengan input pengguna; "perbaikan" yang disarankan npm adalah menurunkan Nuxt ke 4.1.3 sehingga tidak dilakukan. Advisor Supabase yang tersisa sama seperti sebelumnya (aktifkan *Leaked password protection* di Supabase Auth — tindakan pemilik akun).
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

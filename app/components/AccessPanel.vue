@@ -29,10 +29,10 @@ async function load() {
   try {
     const [access, people] = await Promise.all([
       api.request<Access>(`/api/app/admin/invitations/${props.invitationId}/access`),
-      api.request<{ items: typeof users.value }>('/api/app/admin/users', { query: { per_page: 100 } }),
+      fetchAllPages<(typeof users.value)[number]>(api.request, '/api/app/admin/users'),
     ])
     data.value = access
-    users.value = people.items.filter((u) => u.role === 'customer')
+    users.value = people.filter((u) => u.role === 'customer')
     emit('count', access.explicit.length + access.mapped.length)
   } catch (err) {
     toast.error(errorMessage(err, 'Hak akses gagal dimuat.'))

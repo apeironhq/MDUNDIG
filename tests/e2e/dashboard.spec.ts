@@ -302,7 +302,26 @@ test('tombol WhatsApp per akun: biru = belum dikirim, abu-abu = sudah; tetap bis
   await expect(btn).toHaveAttribute('data-sent', 'ya')
   await expect(btn).not.toHaveClass(/unsent/)
   await expect(page.getByRole('row', { name: /pelanggan1/ }).getByText('0813-5555-6666')).toBeVisible()
+
+  // Atur ulang password: akses lama tidak berlaku lagi → tombol kembali biru (belum dikirim) tanpa muat ulang.
+  await page.getByRole('button', { name: 'Atur ulang password pelanggan1' }).click()
+  await page.getByRole('dialog').getByLabel('Password baru').fill('password-baru-456')
+  await page.getByRole('dialog').getByRole('button', { name: 'Simpan password' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Selesai' }).click()
+  await expect(btn).toHaveAttribute('data-sent', 'belum')
   await noHorizontalOverflow(page)
+})
+
+test('endpoint /api yang tidak dikenal → 404 JSON, bukan halaman HTML', async ({ page }) => {
+  for (const path of ['/api/tidak-ada', '/api/app/tidak-ada']) {
+    const res = await page.request.get(path)
+    expect(res.status()).toBe(404)
+    expect(res.headers()['content-type']).toContain('application/json')
+    expect((await res.json()).data.message).toBe('Endpoint tidak ditemukan.')
+  }
+  // Endpoint yang ada tetap berjalan seperti biasa.
+  expect((await page.request.get('/api/daftar-hadiah')).status()).toBe(405)
+  expect((await page.request.get('/api/app/me')).status()).toBe(401)
 })
 
 test('tautan masuk dari pesan WhatsApp langsung mengisi username', async ({ page }) => {
