@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { allowedImageType, isBlockedAddress, proxiedImageUrl, signImage, verifyImage } from '../../server/lib/imageProxy'
 import { validPushEndpoint, validPushKey } from '../../server/lib/pushEndpoint'
 import {
-  ACCESS_REQUIRED, DEFAULT_ACCESS_TEMPLATE, RECAP_REQUIRED, buildAccessMessage, buildRecapMessage, missingPlaceholders, renderTemplate,
+  ACCESS_REQUIRED, DEFAULT_ACCESS_TEMPLATE, RECAP_REQUIRED, buildAccessMessage, buildRecapMessage, missingPlaceholders, renderTemplate, whatsappLink,
 } from '../../shared/whatsapp'
 
 const KEY = Buffer.alloc(32, 7)
@@ -69,14 +69,26 @@ describe('template WhatsApp', () => {
     expect(missingPlaceholders('Halo {nama}', ACCESS_REQUIRED)).toEqual(['username', 'password', 'link_login'])
     expect(renderTemplate('A {x}\n\n', { x: '1' })).toBe('A 1')
   })
-  it('rekap reservasi: per hadiah, dibatasi 30 baris', () => {
-    const items = Array.from({ length: 32 }, (_, i) => ({ gift: `Hadiah ${i + 1}`, guests: i === 0 ? ['Budi', 'Siti'] : [] }))
-    const msg = buildRecapMessage({ name: 'Rina', invitationTitle: 'A & B', total: 2, items, loginUrl: 'L', sender: '' })
+  it('rekap reservasi 115: sebut jumlahnya + 6 terbaru saja, sisanya diarahkan ke web; pesan tetap pendek', () => {
+    const latest = Array.from({ length: 6 }, (_, i) => ({ gift: `Hadiah ${i + 1}`, guest: `Tamu ${115 - i}` }))
+    const msg = buildRecapMessage({ name: 'Rina', invitationTitle: 'A & B', total: 115, latest, loginUrl: 'https://x.example/login?u=rina', sender: 'Apeiron' })
+    expect(msg).toContain('*115 reservasi*')
+    expect(msg).toContain('*6 reservasi terbaru:*')
+    expect(msg.match(/🎁/g)).toHaveLength(6)
+    expect(msg).toContain('🎁 *Hadiah 1* — Tamu 115')
+    expect(msg).toContain('…dan 109 reservasi lainnya')
+    expect(msg).toContain('https://x.example/login?u=rina')
+    expect(whatsappLink('6281234567890', msg).length).toBeLessThan(1500)
+    // Data lebih dari 6 tetap hanya 6 yang disebut.
+    expect(buildRecapMessage({ name: 'R', total: 115, latest: [...latest, ...latest], loginUrl: 'L' }).match(/🎁/g)).toHaveLength(6)
+  })
+  it('rekap reservasi sedikit (≤ 6): semua disebut tanpa "lainnya"; kosong → kalimat jelas', () => {
+    const msg = buildRecapMessage({ name: 'Rina', invitationTitle: 'A & B', total: 2, latest: [{ gift: 'Rice Cooker', guest: 'Budi' }, { gift: 'Blender', guest: 'Siti' }], loginUrl: 'L', sender: '' })
     expect(msg).toContain('*2 reservasi*')
-    expect(msg).toContain('🎁 *Hadiah 1* — Budi, Siti')
-    expect(msg).toContain('…dan 2 hadiah lainnya')
-    expect(msg).not.toContain('Hadiah 31*')
-    expect(buildRecapMessage({ name: '', total: 0, items: [], loginUrl: 'L' })).toContain('Belum ada hadiah yang dipilih tamu.')
+    expect(msg).toContain('🎁 *Rice Cooker* — Budi')
+    expect(msg).not.toContain('lainnya')
+    expect(msg).not.toContain('reservasi terbaru:')
+    expect(buildRecapMessage({ name: '', total: 0, latest: [], loginUrl: 'L' })).toContain('Belum ada hadiah yang dipilih tamu.')
     expect(missingPlaceholders('rekap', RECAP_REQUIRED)).toEqual(['daftar_hadiah'])
   })
 })

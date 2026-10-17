@@ -52,7 +52,7 @@ const available = computed(() => candidates.value.filter((u) => !u.access_count)
 const total = computed(() => (data.value?.explicit.length ?? 0) + (data.value?.mapped.length ?? 0))
 
 // ---- Kirim rekap reservasi ke pelanggan pemegang undangan (WhatsApp).
-interface Recap { title: string; website_name: string | null; total: number; items: Array<{ gift: string; guests: string[] }>; holder: { username: string | null; name: string; whatsapp: string | null } | null }
+interface Recap { title: string; website_name: string | null; total: number; latest: Array<{ gift: string; guest: string }>; holder: { username: string | null; name: string; whatsapp: string | null } | null }
 const recapOpen = ref(false)
 const recapLoading = ref(false)
 const recap = ref<Recap | null>(null)
@@ -67,7 +67,7 @@ async function openRecap() {
     recap.value = r
     const base = resolveAppBase(config.public.appUrl, window.location.origin).base
     recapMessage.value = buildRecapMessage({
-      name: r.holder?.name ?? '', invitationTitle: r.title, total: r.total, items: r.items, sender: r.website_name,
+      name: r.holder?.name ?? '', invitationTitle: r.title, total: r.total, latest: r.latest, sender: r.website_name,
       loginUrl: r.holder?.username ? `${base}/login?u=${encodeURIComponent(r.holder.username)}` : `${base}/login`,
     }, templates.value.recap)
   } catch (err) {

@@ -92,19 +92,32 @@ export function buildAccessMessage(i: AccessMessageInput, template?: string | nu
   })
 }
 
+/** Jumlah reservasi yang disebut satu per satu di pesan rekap; sisanya dilihat di web. */
+export const RECAP_LIST_LIMIT = 6
+
 export interface RecapInput {
   name: string
   invitationTitle?: string | null
+  /** Jumlah seluruh reservasi terkonfirmasi. */
   total: number
-  items: Array<{ gift: string; guests: string[] }>
+  /** Reservasi terbaru (paling baru dulu); hanya 6 pertama yang disebut. */
+  latest: Array<{ gift: string; guest: string }>
   loginUrl: string
   sender?: string | null
 }
 
-/** Rekap reservasi untuk mempelai: satu baris per hadiah (maks. 30 baris agar tautan WhatsApp tidak terlalu panjang). */
+/**
+ * Rekap reservasi untuk mempelai: jumlah total + 6 reservasi terbaru; sisanya diarahkan ke web (tautan masuk).
+ * Pesan tetap pendek walau reservasi ratusan, sehingga tautan WhatsApp selalu bisa dibuka.
+ */
 export function buildRecapMessage(i: RecapInput, template?: string | null): string {
-  const lines = i.items.slice(0, 30).map((it) => `🎁 *${it.gift}* — ${it.guests.length ? it.guests.join(', ') : '-'}`)
-  if (i.items.length > 30) lines.push(`…dan ${i.items.length - 30} hadiah lainnya`)
+  const shown = i.latest.slice(0, RECAP_LIST_LIMIT)
+  const lines = shown.map((r) => `🎁 *${r.gift}* — ${r.guest}`)
+  const rest = Math.max(0, i.total - shown.length)
+  if (rest > 0) {
+    lines.unshift(`*${shown.length} reservasi terbaru:*`)
+    lines.push(`…dan ${rest} reservasi lainnya — lihat semuanya di tautan di bawah.`)
+  }
   return renderTemplate(template?.trim() ? template : DEFAULT_RECAP_TEMPLATE, {
     nama: i.name.trim() || 'Bapak/Ibu',
     undangan: i.invitationTitle ? `*${i.invitationTitle}*` : 'Anda',

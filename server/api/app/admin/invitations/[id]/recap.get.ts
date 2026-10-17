@@ -1,3 +1,5 @@
+import { RECAP_LIST_LIMIT } from '../../../../../../shared/whatsapp'
+
 // Rekap reservasi satu undangan untuk dikirim ke mempelai lewat WhatsApp (khusus admin).
 // Hanya nama hadiah & nama tamu (tanpa nomor WhatsApp tamu atau ucapan).
 export default defineEventHandler(async (event) => {
@@ -6,15 +8,10 @@ export default defineEventHandler(async (event) => {
   const inv = await user.db.from('invitation_overview').select('id, title, website_name').eq('id', id).maybeSingle()
   if (inv.error) throw dbError(inv.error)
   if (!inv.data) throw notFound()
-  const res = await user.db.from('reservations').select('gift_id, gift_name, guest_name, created_at')
-    .eq('invitation_id', id).eq('status', 'confirmed').order('created_at').limit(2000)
+  // Jumlah seluruh reservasi terkonfirmasi + 6 terbaru saja (sisanya dilihat pelanggan di web).
+  const res = await user.db.from('reservations').select('gift_name, guest_name, created_at', { count: 'exact' })
+    .eq('invitation_id', id).eq('status', 'confirmed').order('created_at', { ascending: false }).order('id', { ascending: false }).limit(RECAP_LIST_LIMIT)
   if (res.error) throw dbError(res.error)
-  const byGift = new Map<string, { gift: string; guests: string[] }>()
-  for (const r of res.data ?? []) {
-    const row = byGift.get(r.gift_id) ?? { gift: String(r.gift_name || 'Hadiah'), guests: [] as string[] }
-    row.guests.push(String(r.guest_name))
-    byGift.set(r.gift_id, row)
-  }
   // Pemegang undangan (akses 1:1): akses eksplisit, atau pemetaan otomatis pemiliknya.
   const acc = await user.db.from('invitation_access').select('profiles!invitation_access_user_id_fkey(id, username, display_name, whatsapp)').eq('invitation_id', id).limit(1).maybeSingle()
   if (acc.error) throw dbError(acc.error)
@@ -32,8 +29,8 @@ export default defineEventHandler(async (event) => {
   return {
     title: inv.data.title || 'Tanpa judul',
     website_name: inv.data.website_name ?? null,
-    total: (res.data ?? []).length,
-    items: [...byGift.values()].sort((a, b) => b.guests.length - a.guests.length || a.gift.localeCompare(b.gift, 'id')),
+    total: res.count ?? (res.data ?? []).length,
+    latest: (res.data ?? []).map((r) => ({ gift: String(r.gift_name || 'Hadiah'), guest: String(r.guest_name) })),
     holder: holder ? { id: holder.id, username: holder.username, name: holder.display_name || holder.username || 'Pelanggan', whatsapp: holder.whatsapp } : null,
   }
 })

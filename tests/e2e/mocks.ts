@@ -170,11 +170,11 @@ export async function installMocks(page: Page, role: Role, opts: Partial<MockSta
     const recapPath = /\/api\/app\/admin\/invitations\/([^/]+)\/recap$/.exec(path)
     if (recapPath) {
       const confirmed = state.reservations.filter((r) => r.invitation_id === recapPath[1] && r.status === 'confirmed')
-      const byGift = new Map<string, { gift: string; guests: string[] }>()
-      for (const r of confirmed) { const g = byGift.get(String(r.gift_id)) ?? { gift: String(r.gift_name), guests: [] }; g.guests.push(String(r.guest_name)); byGift.set(String(r.gift_id), g) }
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
       const grant = state.grants.find((g) => g.invitation_id === recapPath[1])
       const holderUser = grant ? [{ ...USERS.customer, whatsapp: '6281277778888' }, ...state.createdUsers].find((u) => u.id === grant.user_id) : null
-      return json(route, { title: 'Andi & Sari', website_name: 'Undangan Utama', total: confirmed.length, items: [...byGift.values()],
+      return json(route, { title: 'Andi & Sari', website_name: 'Undangan Utama', total: confirmed.length,
+        latest: confirmed.slice(0, 6).map((r) => ({ gift: String(r.gift_name), guest: String(r.guest_name) })),
         holder: holderUser ? { id: holderUser.id, username: holderUser.username, name: holderUser.display_name || holderUser.username, whatsapp: (holderUser as { whatsapp?: string | null }).whatsapp ?? null } : null })
     }
     if (path === '/api/app/client-error') { state.clientErrors.push(String((req.postDataJSON() as { message?: string }).message)); return json(route, { ok: true }, 202) }

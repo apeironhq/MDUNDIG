@@ -21,8 +21,9 @@ const recapArea = ref<HTMLTextAreaElement | null>(null)
 // Contoh data untuk pratinjau.
 const preview = computed(() => ({
   access: buildAccessMessage({ name: 'Rina', username: 'rina.doni', password: 'Contoh-123', loginUrl: `${window.location.origin}/login?u=rina.doni`, invitationTitle: 'Rina & Doni', sender: 'Apeiron.ID' }, form.access),
-  recap: buildRecapMessage({ name: 'Rina', invitationTitle: 'Rina & Doni', total: 3, loginUrl: `${window.location.origin}/login?u=rina.doni`, sender: 'Apeiron.ID',
-    items: [{ gift: 'Rice Cooker', guests: ['Budi', 'Siti'] }, { gift: 'Blender', guests: ['Andi'] }] }, form.recap),
+  // Contoh 115 reservasi: pesan menyebut jumlahnya + 6 terbaru, sisanya diarahkan ke web.
+  recap: buildRecapMessage({ name: 'Rina', invitationTitle: 'Rina & Doni', total: 115, loginUrl: `${window.location.origin}/login?u=rina.doni`, sender: 'Apeiron.ID',
+    latest: ['Rice Cooker|Budi', 'Blender|Siti', 'Dispenser|Andi', 'Setrika|Dewi', 'Kipas Angin|Rudi', 'Mixer|Nina'].map((s) => ({ gift: s.split('|')[0]!, guest: s.split('|')[1]! })) }, form.recap),
 }))
 const missing = computed(() => ({ access: missingPlaceholders(form.access, ACCESS_REQUIRED), recap: missingPlaceholders(form.recap, RECAP_REQUIRED) }))
 const invalid = computed(() => missing.value.access.length > 0 || missing.value.recap.length > 0 || form.access.length > TEMPLATE_MAX || form.recap.length > TEMPLATE_MAX)

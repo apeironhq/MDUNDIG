@@ -177,7 +177,7 @@ Endpoint lain memerlukan `Authorization: Bearer <access_token Supabase>`; query 
 | `GET /api/app/admin/events?from=YYYY-MM-DD&to=YYYY-MM-DD` (kalender acara akad/resepsi/ngunduh, rentang ≤ 400 hari) | admin |
 | `GET /api/app/admin/audit?action=&page=` (riwayat aktivitas), `GET/DELETE /api/app/admin/errors` (log error 30 hari) | admin |
 | `GET/PUT /api/app/admin/settings/whatsapp` (`{ access_template, recap_template }`; null = bawaan; placeholder wajib dicek) | admin |
-| `GET /api/app/admin/invitations/:id/recap` (rekap reservasi per hadiah + pemegang undangan, untuk dikirim lewat WhatsApp) | admin |
+| `GET /api/app/admin/invitations/:id/recap` (jumlah reservasi terkonfirmasi + 6 terbaru `latest[{gift, guest}]` + pemegang undangan, untuk dikirim lewat WhatsApp) | admin |
 | `POST /api/app/client-error` (laporan error browser, ringkas) | semua |
 | `POST/DELETE /api/app/push/subscribe` (langganan push perangkat ini; endpoint hanya layanan push resmi) | semua |
 | `GET /api/img?u=&e=&s=` (proksi gambar hadiah `http://`; hanya URL bertanda tangan server, alamat privat ditolak, maks. 5 MB, raster saja) | publik |

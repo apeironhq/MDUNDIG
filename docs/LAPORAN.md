@@ -366,6 +366,12 @@ Catatan: untuk pilihan (dropdown/radio/checkbox) buatan sendiri, plugin mengirim
 
 **Uji**: DB +7 (meta, kalender, pengaturan, log error, push, Realtime, MFA), unit +16 (proksi gambar & IP privat, endpoint push, template, meta), e2e +13 skenario × 3 ukuran layar (kalender, riwayat, template, rekap, 2FA penuh, push, meta order, laporan error, PWA), integrasi **kelas PHP plugin asli → server build → PostgreSQL** (meta tersimpan, bentrok tidak dikirim ulang), self-check plugin (antrean, meta, peringatan editor). Semua lulus.
 
+## 5af. Rekap reservasi: jumlah + 6 terbaru
+
+- Dicek dengan 115 reservasi: pesan lama menyebut **semua** nama tamu per hadiah (1.433 karakter, tautan WhatsApp 2.492 karakter) — makin panjang bila nama/hadiah banyak, dan tautan sepanjang itu bisa gagal dibuka di sebagian ponsel.
+- Kini pesan menyebut **jumlah total** + **6 reservasi terbaru** (hadiah — nama tamu), lalu "…dan N reservasi lainnya — lihat semuanya di tautan di bawah" diikuti tautan masuk (username sudah terisi). Reservasi ≤ 6 disebut semua tanpa kalimat "lainnya". Server hanya mengambil 6 baris + hitungan total (lebih ringan).
+- Uji: unit (115 → 6 baris, "…dan 109", tautan < 1.500 karakter; ≤ 6; kosong) & e2e 115 reservasi di desktop/tablet/ponsel.
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

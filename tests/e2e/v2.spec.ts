@@ -113,6 +113,29 @@ test('rekap reservasi: dikirim ke pelanggan pemegang undangan lewat WhatsApp', a
   await expect(composer.getByTestId('wc-send')).toHaveAttribute('href', /^https:\/\/wa\.me\/6281277778888\?text=/)
 })
 
+test('rekap 115 reservasi: menyebut jumlahnya + 6 terbaru, sisanya diarahkan ke web', async ({ page }) => {
+  const reservations = Array.from({ length: 115 }, (_, i) => ({ id: `rr${i}`, invitation_id: '11111111-1111-4111-8111-111111111111', invitation_title: 'Andi & Sari', gift_id: `g${i % 10}`,
+    gift_name: `Hadiah ${(i % 10) + 1}`, guest_name: `Tamu ${i + 1}`, guest_whatsapp: '6281234567890', message: '', quantity: 1, status: 'confirmed',
+    created_at: new Date(Date.UTC(2026, 9, 1) + i * 60000).toISOString(), source: 'widget', admin_note: '' }))
+  await installMocks(page, 'admin', { reservations, grants: [{ invitation_id: '11111111-1111-4111-8111-111111111111', user_id: '00000000-0000-4000-8000-000000000002' }] })
+  await login(page, 'admin')
+  await page.goto('/daftar-hadiah/11111111-1111-4111-8111-111111111111')
+  await page.getByTestId('recap-open').click()
+  const dlg = page.getByRole('dialog', { name: 'Kirim rekap reservasi' })
+  await expect(dlg).toContainText('115 reservasi')
+  const msg = await dlg.getByTestId('wa-composer').getByLabel(/^Pesan/).inputValue()
+  expect(msg).toContain('*115 reservasi*')
+  expect(msg.match(/🎁/g)).toHaveLength(6)
+  // 6 terbaru = tamu 115 s.d. 110; tamu lama tidak disebut.
+  expect(msg).toContain('Tamu 115')
+  expect(msg).toContain('Tamu 110')
+  expect(msg).not.toContain('Tamu 109')
+  expect(msg).toContain('…dan 109 reservasi lainnya')
+  expect(msg).toContain('/login?u=pelanggan1')
+  const href = await dlg.getByTestId('wc-send').getAttribute('href')
+  expect(href!.length).toBeLessThan(1500)
+})
+
 test('verifikasi dua langkah: aktifkan dari Profil, lalu login wajib kode authenticator', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'alur sama di semua ukuran layar')
   const state = await installMocks(page, 'admin')
