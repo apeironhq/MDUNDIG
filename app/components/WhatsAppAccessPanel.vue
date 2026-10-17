@@ -121,14 +121,20 @@ async function copy() {
 <style scoped>
 .wa { display: flex; flex-direction: column; gap: 1rem; }
 .mono-ish { font-size: var(--fs-label); line-height: 1.55; white-space: pre-wrap; }
-.wa-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
+/* Tombol aksi menempel di bawah popup (gaya sama dengan footer modal) agar selalu terlihat, juga di ponsel. Tutup lewat tombol X. */
+.wa-actions {
+  position: sticky; bottom: -1.5rem; z-index: 1; margin: 0 -1.5rem -1.5rem; padding: 1rem 1.5rem;
+  display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;
+  background: var(--bg-subtle); border-top: 1px solid var(--border);
+}
 .sent-note { margin-right: auto; display: inline-flex; align-items: center; gap: 0.4rem; }
 .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--n-300, #cbd5e1); }
 .dot.on { background: var(--brand); }
 .btn.disabled { pointer-events: none; opacity: 0.5; }
 .err { color: var(--err); }
-@media (max-width: 480px) {
-  .wa-actions > .btn { flex: 1 1 100%; }
-  .sent-note { flex: 1 1 100%; }
+@media (max-width: 640px) {
+  .wa-actions { bottom: -1.25rem; margin: 0 -1.25rem -1.25rem; padding: 1rem 1.25rem; flex-direction: column-reverse; align-items: stretch; }
+  .wa-actions > .btn { width: 100%; }
+  .sent-note { margin-right: 0; justify-content: center; }
 }
 </style>

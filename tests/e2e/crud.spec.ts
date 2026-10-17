@@ -175,7 +175,7 @@ test('pengguna: ubah (jadikan admin) lalu hapus; akun sendiri tidak bisa dihapus
   await add.getByRole('button', { name: 'Berikutnya' }).click()
   await add.getByRole('button', { name: 'Buat akun' }).click()
   await expect(page.getByTestId('toast')).toContainText('Akun toko.bunga dibuat')
-  await add.getByRole('button', { name: 'Selesai' }).click()
+  await add.getByRole('button', { name: 'Tutup' }).click()
 
   await page.getByRole('button', { name: 'Ubah akun toko.bunga' }).click()
   const edit = page.getByRole('dialog')

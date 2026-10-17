@@ -270,6 +270,28 @@ Dicek & aman (tidak diubah): data live konsisten dengan aturan 1:1 (tidak ada un
 
 Catatan: `npm audit` melaporkan 11 temuan "high" pada dependensi turunan Nuxt (`braces` untuk pencarian file saat build, `node-forge` untuk sertifikat HTTPS server dev). Keduanya tidak berjalan di Vercel dengan input pengguna; "perbaikan" yang disarankan npm adalah menurunkan Nuxt ke 4.1.3 sehingga tidak dilakukan. Advisor Supabase yang tersisa sama seperti sebelumnya (aktifkan *Leaked password protection* di Supabase Auth — tindakan pemilik akun).
 
+## 5y. Audit UI/UX tombol, form & tabel (17 Okt 2026)
+
+Metode: semua halaman (admin 10, pelanggan 6, publik 2) dibuka di desktop 1366px, tablet 820px, dan ponsel (Pixel 7); setiap tombol, kolom isian, dan tabel **diukur otomatis** (tinggi, ukuran huruf, tebal, radius, padding, luapan horizontal) lalu dibandingkan, ditambah tinjauan screenshot.
+
+Hasil pengukuran (sudah seragam):
+| Elemen | Ukuran |
+|---|---|
+| Tombol utama/sekunder | tinggi 40px, huruf 15px/500, radius 10px — sama di semua halaman & perangkat |
+| Tombol kecil (aksi baris: Akses, Detail, ikon ubah/hapus/WhatsApp) | 34px, huruf 14px |
+| Tombol besar (hanya Masuk & Lupa password) | 46px, disengaja untuk halaman masuk |
+| Kolom isian & pilihan | 40px, huruf 15px, radius 10px (46px di halaman masuk) |
+| Tabel | judul kolom 13px, isi 15px, baris 50–73px — tidak terlalu kecil/besar |
+
+Masalah yang ditemukan & diperbaiki:
+1. **Tabel di tablet terpotong**: 6 tabel lebih lebar dari layar (48–351px) sehingga kolom Status/aksi terpotong dan teks patah per suku kata ("Sela/mat!", nomor WhatsApp terbelah). Kini tabel berubah jadi kartu berdasarkan **lebar wadahnya** (< 800px), dua kartu per baris bila cukup ruang. Tidak ada lagi luapan horizontal di semua perangkat (diukur: 0px).
+2. **Tabel Pengguna di laptop 1366px** lebih lebar 53px (tombol aksi terpotong). Kolom Email + WhatsApp digabung menjadi **Kontak** → muat penuh.
+3. **Format nomor WhatsApp tidak seragam**: reservasi menampilkan `6281234567890`, Pengguna `0812-3456-7890`. Kini semua tampil `0812-3456-7890` (data & ekspor tetap format asli).
+4. **Popup WhatsApp**: tombol **Selesai** dihapus (cukup tombol X). **Salin pesan** & **Kirim lewat WhatsApp** kini menempel di bawah popup seperti footer modal lain — selalu terlihat di ponsel tanpa menggulir. Berlaku di popup tabel, langkah 3 Tambah akun, dan Atur ulang password.
+5. Ikon langkah "3. Kirim akses" & popup "Kirim akses terbaru" memakai logo WhatsApp agar sama dengan tombol di tabel.
+
+Dicek & sudah konsisten (tidak diubah): header halaman (judul + deskripsi + tombol utama di kanan), header kartu (ikon + judul + deskripsi kecil + badge jumlah), footer modal (Batal kiri, aksi utama kanan; bertumpuk penuh di ponsel), kartu tabel di ponsel, tidak ada luapan halaman di semua halaman. Pilihan filter "Semua/Belum dibaca" di Notifikasi (32px) dan tautan "Hapus semua" sengaja lebih kecil sesuai permintaan sebelumnya (hapus tidak ditonjolkan).
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

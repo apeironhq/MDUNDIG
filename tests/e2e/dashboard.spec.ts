@@ -246,7 +246,7 @@ test('admin default "admin" masuk dengan username → buat akun pelanggan → at
   expect(href).toMatch(/^https:\/\/wa\.me\/6281298765432\?text=/)
   expect(decodeURIComponent(href!.split('?text=')[1]!)).toBe(msg)
   await noHorizontalOverflow(page)
-  await dialog.getByRole('button', { name: 'Selesai' }).click()
+  await dialog.getByRole('button', { name: 'Tutup' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await expect(page.getByRole('cell', { name: 'toko.bunga', exact: true })).toBeVisible()
@@ -260,7 +260,7 @@ test('admin default "admin" masuk dengan username → buat akun pelanggan → at
   const resetWa = page.getByRole('dialog', { name: 'Kirim akses terbaru' }).getByTestId('wa-panel')
   expect(await resetWa.getByLabel(/^Pesan/).inputValue()).toContain('🔑 *Password:* password-baru-123')
   await expect(resetWa.getByTestId('wa-send')).toHaveAttribute('href', /^https:\/\/wa\.me\/6281298765432\?text=/)
-  await page.getByRole('dialog').getByRole('button', { name: 'Selesai' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Tutup' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await noHorizontalOverflow(page)
 })
@@ -278,6 +278,9 @@ test('tombol WhatsApp per akun: biru = belum dikirim, abu-abu = sudah; tetap bis
   const dlg = page.getByRole('dialog', { name: 'Kirim akses lewat WhatsApp' })
   const wa = dlg.getByTestId('wa-panel')
   await expect(wa.getByTestId('wa-status')).toContainText('Belum dikirim')
+  // Cukup tombol Salin & Kirim (tutup lewat X) — tanpa tombol Selesai.
+  await expect(dlg.getByRole('button', { name: 'Selesai' })).toHaveCount(0)
+  await expect(wa.getByRole('button', { name: 'Salin pesan' })).toBeVisible()
   // Password tidak disimpan: tanpa password baru, pesan memakai password lama.
   expect(await wa.getByLabel(/^Pesan/).inputValue()).toContain('🔑 *Password:* sama seperti yang sudah kami berikan sebelumnya')
   await expect(wa.getByTestId('wa-send')).toHaveAttribute('aria-disabled', 'true')
@@ -298,7 +301,7 @@ test('tombol WhatsApp per akun: biru = belum dikirim, abu-abu = sudah; tetap bis
   await second.waitForURL(/wa\.me\/6281355556666/)
   await second.close()
   expect(state.passwordResets).toEqual(['00000000-0000-4000-8000-000000000002'])
-  await dlg.getByRole('button', { name: 'Selesai' }).click()
+  await dlg.getByRole('button', { name: 'Tutup' }).click()
   await expect(btn).toHaveAttribute('data-sent', 'ya')
   await expect(btn).not.toHaveClass(/unsent/)
   await expect(page.getByRole('row', { name: /pelanggan1/ }).getByText('0813-5555-6666')).toBeVisible()
@@ -307,7 +310,7 @@ test('tombol WhatsApp per akun: biru = belum dikirim, abu-abu = sudah; tetap bis
   await page.getByRole('button', { name: 'Atur ulang password pelanggan1' }).click()
   await page.getByRole('dialog').getByLabel('Password baru').fill('password-baru-456')
   await page.getByRole('dialog').getByRole('button', { name: 'Simpan password' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Selesai' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Tutup' }).click()
   await expect(btn).toHaveAttribute('data-sent', 'belum')
   await noHorizontalOverflow(page)
 })
@@ -414,7 +417,7 @@ test('akses undangan: satu akun = satu undangan, dipilih lewat popup (tanpa meng
   // Pesan akses menyebut undangan yang dipilih.
   expect(await add.getByTestId('wa-panel').getByLabel(/^Pesan/).inputValue()).toContain('undangan *Andi & Sari*')
   await expect(add.getByTestId('wa-send')).toHaveAttribute('href', /wa\.me\/6281311112222\?/)
-  await add.getByRole('button', { name: 'Selesai' }).click()
+  await add.getByRole('button', { name: 'Tutup' }).click()
   await expect(page.getByRole('row', { name: /sari\.andi/ }).getByText('Andi & Sari')).toBeVisible()
 
   // Akses 1:1: undangan yang sudah dipakai sari.andi tidak bisa dipilih untuk akun lain.

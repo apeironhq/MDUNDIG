@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ListChecks, Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import type { ReservationEdit } from './ReservationFormModal.vue'
+import { formatWhatsapp } from '../../shared/whatsapp'
 
 interface Row {
   id: string; invitation_id: string; invitation_title: string; gift_id: string; gift_name: string
@@ -111,7 +112,7 @@ async function confirmDelete() {
               <span v-if="auth.isAdmin.value && r.source === 'admin'" class="block text-caption">Ditambahkan admin</span>
               <span v-if="auth.isAdmin.value && r.admin_note" class="block text-caption note">Catatan: {{ r.admin_note }}</span>
             </td>
-            <td class="text-mono">{{ r.guest_whatsapp }}</td>
+            <td class="text-mono whitespace-nowrap">{{ formatWhatsapp(r.guest_whatsapp) || '—' }}</td>
             <td class="num">{{ r.quantity }}</td>
             <td class="msg">{{ r.message || '—' }}</td>
             <td class="whitespace-nowrap">{{ formatDateTime(r.created_at) }}</td>

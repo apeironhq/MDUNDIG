@@ -242,7 +242,7 @@
 
   /* Tabel: di layar sempit dapat digulir horizontal dan difokus keyboard. */
   /* position: relative → elemen absolut di dalam tabel (mis. .sr-only) tidak melebarkan halaman. */
-  .table-wrap { position: relative; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap { position: relative; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; container: table-wrap / inline-size; }
   .table-wrap:focus-visible { outline-offset: -2px; }
   .table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: var(--fs-body); }
   .table thead th {
@@ -291,10 +291,11 @@
 @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* Ponsel: tabel bertanda .table-stack (+ direktif v-stack) jadi kartu per baris. Sengaja di luar @layer
-   agar menang atas utilitas tabel (whitespace-nowrap, justify-end) khusus di layar sempit.
+/* Tabel bertanda .table-stack (+ direktif v-stack) jadi kartu per baris saat WADAH tabel sempit (< 800px:
+   ponsel, tablet, laptop kecil) — tidak ada kolom terpotong / teks patah per suku kata. Sengaja di luar @layer
+   agar menang atas utilitas tabel (whitespace-nowrap, justify-end) khusus di wadah sempit.
    .cell-primary = judul kartu, .cell-check = kotak centang di pojok, .cell-actions = tombol di bawah. */
-@media (max-width: 639.98px) {
+@container table-wrap (max-width: 799.98px) {
   .table.table-stack { min-width: 0; display: block; }
   .table-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .table-stack tbody { display: block; }
@@ -317,4 +318,10 @@
   .table.table-stack tbody td.cell-check { position: absolute; top: 0.85rem; right: 1.25rem; }
   .table.table-stack tbody td.cell-actions { padding-top: 0.35rem; }
   .table-stack tbody td.cell-actions > .flex { justify-content: flex-start; flex-wrap: wrap; }
+}
+/* Wadah cukup lebar (tablet / laptop kecil): kartu dua kolom agar ruang tidak terbuang. */
+@container table-wrap (min-width: 600px) and (max-width: 799.98px) {
+  .table-stack tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .table-stack tbody tr:nth-child(odd) { border-right: 1px solid var(--border); }
+  .table-stack tbody tr:nth-child(odd):nth-last-child(2) { border-bottom: 0; }
 }

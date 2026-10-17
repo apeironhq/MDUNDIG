@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, Gift, KeyRound, MessageCircle, Pencil, Trash2, UserPlus, UserRound, Users } from 'lucide-vue-next'
+import { ArrowLeft, ArrowRight, Gift, KeyRound, Pencil, Trash2, UserPlus, UserRound, Users } from 'lucide-vue-next'
 import { formatWhatsapp, normalizeWhatsapp } from '../../../shared/whatsapp'
 import WhatsAppIcon from '../../components/WhatsAppIcon.vue'
 
@@ -279,13 +279,16 @@ async function saveAccess() {
       <EmptyState v-else-if="!users.items.value.length" title="Belum ada akun" />
       <div v-else class="table-wrap" tabindex="0" role="region" aria-label="Tabel akun">
         <table v-stack class="table table-stack">
-          <thead><tr><th scope="col">Username</th><th scope="col">Nama</th><th scope="col">Email</th><th scope="col">WhatsApp</th><th scope="col">Peran</th><th scope="col">Undangan</th><th scope="col">Dibuat</th><th scope="col"><span class="sr-only">Aksi</span></th></tr></thead>
+          <thead><tr><th scope="col">Username</th><th scope="col">Nama</th><th scope="col">Kontak</th><th scope="col">Peran</th><th scope="col">Undangan</th><th scope="col">Dibuat</th><th scope="col"><span class="sr-only">Aksi</span></th></tr></thead>
           <tbody>
             <tr v-for="u in users.items.value" :key="u.id">
               <td class="cell-strong text-mono whitespace-nowrap cell-primary">{{ u.username || '—' }}</td>
               <td>{{ u.display_name || '—' }}</td>
-              <td class="whitespace-nowrap">{{ u.email || '—' }}</td>
-              <td class="whitespace-nowrap text-mono">{{ formatWhatsapp(u.whatsapp) || '—' }}</td>
+              <td>
+                <span v-if="u.whatsapp" class="block whitespace-nowrap text-mono">{{ formatWhatsapp(u.whatsapp) }}</span>
+                <span v-if="u.email" class="block text-caption contact-email" :title="u.email">{{ u.email }}</span>
+                <span v-if="!u.whatsapp && !u.email">—</span>
+              </td>
               <td><span class="badge">{{ u.role === 'admin' ? 'Admin platform' : 'Pelanggan' }}</span></td>
               <td class="whitespace-nowrap">
                 <span v-if="u.role === 'admin'" class="text-caption">Semua</span>
@@ -316,7 +319,7 @@ async function saveAccess() {
       <ol class="steps" aria-label="Langkah tambah akun">
         <li :class="{ active: createStep === 1, done: createStep > 1 }" :aria-current="createStep === 1 ? 'step' : undefined"><span class="step-icon"><UserRound :size="16" /></span><span>1. Data akun</span></li>
         <li :class="{ active: createStep === 2, done: createStep > 2 }" :aria-current="createStep === 2 ? 'step' : undefined"><span class="step-icon"><Gift :size="16" /></span><span>2. Akses</span></li>
-        <li :class="{ active: createStep === 3 }" :aria-current="createStep === 3 ? 'step' : undefined"><span class="step-icon"><MessageCircle :size="16" /></span><span>3. Kirim akses</span></li>
+        <li :class="{ active: createStep === 3 }" :aria-current="createStep === 3 ? 'step' : undefined"><span class="step-icon"><WhatsAppIcon :size="16" /></span><span>3. Kirim akses</span></li>
       </ol>
       <WhatsAppAccessPanel v-if="createStep === 3 && created" v-bind="created" @sent="markSent(createdId, $event)" />
       <form v-else id="account-form" class="flex flex-col gap-5" autocomplete="off" novalidate @submit.prevent="createAccount">
@@ -349,14 +352,11 @@ async function saveAccess() {
         </fieldset>
         <p v-if="createError" class="alert tone-err" role="alert">{{ createError }}</p>
       </form>
-      <template #footer>
-        <button v-if="createStep === 3" class="btn btn-secondary" type="button" @click="closeCreate">Selesai</button>
-        <template v-else>
-          <button v-if="createStep === 1" class="btn btn-secondary" type="button" :disabled="creating" @click="closeCreate">Batal</button>
-          <button v-else class="btn btn-secondary" type="button" :disabled="creating" @click="createStep = 1; createError = ''"><ArrowLeft :size="16" /> Kembali</button>
-          <button v-if="createStep === 1" class="btn btn-primary" type="submit" form="account-form">Berikutnya <ArrowRight :size="16" /></button>
-          <AsyncButton v-else type="submit" form="account-form" :loading="creating"><UserPlus :size="16" /> Buat akun</AsyncButton>
-        </template>
+      <template v-if="createStep !== 3" #footer>
+        <button v-if="createStep === 1" class="btn btn-secondary" type="button" :disabled="creating" @click="closeCreate">Batal</button>
+        <button v-else class="btn btn-secondary" type="button" :disabled="creating" @click="createStep = 1; createError = ''"><ArrowLeft :size="16" /> Kembali</button>
+        <button v-if="createStep === 1" class="btn btn-primary" type="submit" form="account-form">Berikutnya <ArrowRight :size="16" /></button>
+        <AsyncButton v-else type="submit" form="account-form" :loading="creating"><UserPlus :size="16" /> Buat akun</AsyncButton>
       </template>
     </ModalDialog>
 
@@ -411,11 +411,8 @@ async function saveAccess() {
       <WhatsAppAccessPanel v-else-if="waTarget" :key="waTarget.id" :name="waTarget.display_name || waTarget.username || waTarget.email" :username="waTarget.username || waTarget.email"
         :password="null" :whatsapp="waTarget.whatsapp ?? null" :invitation-title="waTarget.access_title ?? null" :sender="waSender"
         :sent-at="waTarget.whatsapp_sent_at ?? null" :before-send="resetBeforeSend" @sent="markSent(waTarget.id, $event)" />
-      <template #footer>
-        <button class="btn btn-secondary" type="button" @click="waTarget = null">Selesai</button>
-      </template>
     </ModalDialog>
-    <ModalDialog :open="!!resetTarget" :icon="resetShare ? MessageCircle : KeyRound" :title="resetShare ? 'Kirim akses terbaru' : 'Atur ulang password'"
+    <ModalDialog :open="!!resetTarget" :icon="resetShare ? WhatsAppIcon : KeyRound" :title="resetShare ? 'Kirim akses terbaru' : 'Atur ulang password'"
       :subtitle="resetShare ? `Password ${label(resetTarget!)} sudah diganti. Kirim akses terbaru lewat WhatsApp.` : resetTarget ? `${label(resetTarget)} · setelah disimpan, akses baru dapat dikirim lewat WhatsApp.` : ''"
       :size="resetShare ? 'md' : 'sm'" :closable="!resetting" @close="closeReset">
       <WhatsAppAccessPanel v-if="resetShare && resetTarget" v-bind="resetShare" @sent="markSent(resetTarget.id, $event)" />
@@ -427,18 +424,16 @@ async function saveAccess() {
         </div>
         <p v-if="resetError" class="alert tone-err" role="alert">{{ resetError }}</p>
       </form>
-      <template #footer>
-        <button v-if="resetShare" class="btn btn-secondary" type="button" @click="closeReset">Selesai</button>
-        <template v-else>
-          <button class="btn btn-secondary" type="button" :disabled="resetting" @click="closeReset">Batal</button>
-          <AsyncButton type="submit" form="reset-form" :loading="resetting">Simpan password</AsyncButton>
-        </template>
+      <template v-if="!resetShare" #footer>
+        <button class="btn btn-secondary" type="button" :disabled="resetting" @click="closeReset">Batal</button>
+        <AsyncButton type="submit" form="reset-form" :loading="resetting">Simpan password</AsyncButton>
       </template>
     </ModalDialog>
   </div>
 </template>
 
 <style scoped>
+.contact-email { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .access-title { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; color: var(--text-heading); }
 .steps { display: flex; gap: 0.5rem; list-style: none; margin: 0 0 1.25rem; padding: 0; }
 .steps li { flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--r); font-size: var(--fs-label); color: var(--text-muted); }

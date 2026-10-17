@@ -161,8 +161,8 @@ async function confirmDelete() {
 tr.is-selected td { background: var(--bg-subtle); }
 .select-all { display: flex; align-items: center; gap: 0.6rem; }
 .select-all-text { display: none; }
-/* Ponsel (tampilan kartu): kepala tabel disembunyikan, kecuali kotak "Pilih semua" di atas kartu. */
-@media (max-width: 639.98px) {
+/* Tampilan kartu (wadah tabel sempit): kepala tabel disembunyikan, kecuali kotak "Pilih semua" di atas kartu. */
+@container table-wrap (max-width: 799.98px) {
   .table-stack thead { position: static; width: auto; height: auto; overflow: visible; clip-path: none; display: block; }
   .table-stack thead tr { display: flex; padding: 0.7rem 1.25rem; border-bottom: 1px solid var(--border); }
   .table-stack thead th { display: none; }
