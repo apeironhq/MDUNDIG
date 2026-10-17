@@ -25,6 +25,10 @@ onMounted(load)
 useHead({ title: () => `${data.value?.invitation.title || 'Undangan'} — MDUNDIG` })
 const activeGifts = computed(() => (data.value?.gifts ?? []).filter((g) => g.active))
 const inactiveGifts = computed(() => (data.value?.gifts ?? []).filter((g) => !g.active))
+// Ponsel: katalog ringkas 4 teratas tanpa gulir otomatis; tombol "Tampilkan semua" membuka sisanya.
+const phone = useIsPhone()
+const showAllGifts = ref(false)
+const shownGifts = computed(() => (phone.value && !showAllGifts.value ? activeGifts.value.slice(0, PHONE_LIST_LIMIT) : activeGifts.value))
 const toast = useToast()
 const deleteOpen = ref(false)
 const deleting = ref(false)
@@ -111,7 +115,7 @@ const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g
               <!-- Bergulir sendiri halus & menyambung bila hadiah lebih banyak dari tinggi kartu. -->
               <AutoScrollList auto label="Daftar katalog hadiah">
                 <ul class="gift-list">
-                  <li v-for="g in activeGifts" :key="g.id" class="gift-grid gift-row">
+                  <li v-for="g in shownGifts" :key="g.id" class="gift-grid gift-row">
                     <div class="g-name">
                       <span class="thumb">
                         <img v-if="g.image_url && !failedImg.has(g.id)" :src="g.image_url" :alt="`Foto ${g.name}`" width="44" height="44" loading="lazy" referrerpolicy="no-referrer" @error="failedImg.add(g.id)">
@@ -133,6 +137,9 @@ const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g
                   </li>
                 </ul>
               </AutoScrollList>
+              <button v-if="phone && activeGifts.length > PHONE_LIST_LIMIT" class="btn btn-ghost btn-sm show-all" type="button" data-testid="catalog-toggle" @click="showAllGifts = !showAllGifts">
+                {{ showAllGifts ? 'Tampilkan lebih sedikit' : `Tampilkan semua ${activeGifts.length} hadiah` }}
+              </button>
             </div>
             <p v-if="insecureImages" class="catalog-note text-caption" data-testid="insecure-images">Sebagian gambar berasal dari alamat <span class="text-mono">http://</span> sehingga diblokir browser di dashboard HTTPS. Gambar akan tampil setelah website WordPress memakai HTTPS dan dapat diakses publik.</p>
             <p v-if="inactiveGifts.length" class="catalog-note text-caption">{{ inactiveGifts.length }} hadiah telah dihapus dari katalog. Riwayat reservasinya tetap tersimpan.</p>
@@ -180,6 +187,9 @@ const giftOptions = computed(() => (data.value?.gifts ?? []).map((g) => ({ id: g
   .main-grid.with-side > .catalog { height: var(--side-h, 360px); }
 }
 @media (max-width: 1023.98px) { .catalog { height: auto; max-height: 520px; } }
+/* Ponsel: katalog setinggi isinya (4 teratas + tombol tampilkan semua), tanpa gulir di dalam kartu. */
+@media (max-width: 767.98px) { .catalog { max-height: none; } }
+.show-all { align-self: center; margin-top: 0.5rem; }
 .fill { flex: 1; justify-content: center; }
 /* Kepala & catatan kartu tidak ikut menyusut; hanya daftar yang dibatasi tinggi. */
 .catalog > .card-header, .gift-head, .catalog-note { flex-shrink: 0; }

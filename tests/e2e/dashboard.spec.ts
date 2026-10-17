@@ -576,6 +576,50 @@ test('ringkasan: form masuk berjalan sendiri halus tanpa ujung, berhenti saat di
   expect(await page.getByRole('region', { name: 'Daftar hadiah terpopuler' }).evaluate((e) => e.scrollTop)).toBe(0)
 })
 
+test('ponsel: daftar ringkasan & katalog statis 4 teratas — tanpa gulir otomatis maupun gulir di dalam kartu', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile', 'khusus ponsel; desktop tetap bergulir otomatis')
+  await installMocks(page, 'admin', { orders: manyOrders(6), extraGifts: 5 })
+  await login(page, 'admin')
+  for (const name of ['Daftar order terbaru', 'Daftar aktivitas terbaru', 'Daftar hadiah terpopuler']) {
+    const list = page.getByRole('region', { name })
+    if (!(await list.count())) continue
+    await expect(list).toHaveClass(/is-static/)
+    await expect(list).not.toHaveClass(/marquee/)
+    expect(await list.locator('li').count()).toBeLessThanOrEqual(4)
+    // Tidak ada gulir di dalam kartu dan tidak ada salinan pita.
+    expect(await list.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1)
+    await expect(list.locator('[aria-hidden="true"][inert]')).toHaveCount(0)
+  }
+  await expect(page.getByRole('region', { name: 'Daftar order terbaru' }).locator('li')).toHaveCount(4)
+  // Tidak bergerak sendiri.
+  const track = page.getByRole('region', { name: 'Daftar order terbaru' }).locator('.track')
+  const before = await track.evaluate((el) => getComputedStyle(el).transform)
+  await page.waitForTimeout(2500)
+  expect(await track.evaluate((el) => getComputedStyle(el).transform)).toBe(before)
+
+  // Katalog di detail undangan: 4 teratas + tombol tampilkan semua.
+  await page.goto('/daftar-hadiah/11111111-1111-4111-8111-111111111111')
+  const catalog = page.getByRole('region', { name: 'Daftar katalog hadiah' })
+  await expect(catalog).toHaveClass(/is-static/)
+  await expect(catalog.locator('li')).toHaveCount(4)
+  const toggle = page.getByTestId('catalog-toggle')
+  await expect(toggle).toHaveText(/Tampilkan semua \d+ hadiah/)
+  await toggle.click()
+  expect(await catalog.locator('li').count()).toBeGreaterThan(4)
+  await expect(toggle).toHaveText('Tampilkan lebih sedikit')
+  await noHorizontalOverflow(page)
+})
+
+test('desktop tetap: katalog & form masuk bergulir otomatis, tanpa tombol tampilkan semua', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'cukup satu viewport')
+  await installMocks(page, 'admin', { orders: manyOrders(6), extraGifts: 5 })
+  await login(page, 'admin')
+  await expect(page.getByRole('region', { name: 'Daftar order terbaru' })).toHaveClass(/marquee/)
+  await page.goto('/daftar-hadiah/11111111-1111-4111-8111-111111111111')
+  await expect(page.getByRole('region', { name: 'Daftar katalog hadiah' })).toHaveClass(/marquee/)
+  await expect(page.getByTestId('catalog-toggle')).toHaveCount(0)
+})
+
 test('ringkasan: prefers-reduced-motion mematikan gulir otomatis', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'cukup satu viewport')
   await page.emulateMedia({ reducedMotion: 'reduce' })

@@ -58,6 +58,9 @@ const statusSegments = computed(() => [
 ])
 // Gambar dari WordPress yang gagal dimuat (http:// di HTTPS / situs lokal) diganti ikon.
 const failedImg = reactive(new Set<string>())
+// Ponsel: tiap daftar ringkas hanya 4 teratas (tanpa gulir otomatis maupun gulir di dalam kartu).
+const phone = useIsPhone()
+const phoneTop = <T>(list: T[]): T[] => (phone.value ? list.slice(0, PHONE_LIST_LIMIT) : list)
 const topTotal = computed(() => Math.max(1, data.value?.kpis.reservations.total ?? 0))
 
 const AUDIT: Record<string, { title: string; icon: Component; color: string }> = {
@@ -157,7 +160,7 @@ const tint = (color: string) => ({ color, background: `color-mix(in srgb, ${colo
           <EmptyState v-else-if="!data?.top_gifts.length" :icon="Gift" title="Belum ada hadiah" description="Hadiah muncul setelah widget Daftar Hadiah dibuka." class="fill" />
           <AutoScrollList v-else label="Daftar hadiah terpopuler">
           <ul class="items">
-            <li v-for="g in data.top_gifts" :key="g.gift_id" class="item">
+            <li v-for="g in phoneTop(data.top_gifts)" :key="g.gift_id" class="item">
               <span class="thumb">
                 <img v-if="g.image_url && !failedImg.has(g.gift_id)" :src="g.image_url" :alt="''" loading="lazy" referrerpolicy="no-referrer" @error="failedImg.add(g.gift_id)">
                 <Gift v-else :size="18" aria-hidden="true" />
@@ -188,7 +191,7 @@ const tint = (color: string) => ({ color, background: `color-mix(in srgb, ${colo
           <EmptyState v-else-if="!data?.orders?.latest.length" :icon="ClipboardList" title="Belum ada order" description="Order dari widget Form Order muncul di sini." class="fill" />
           <AutoScrollList v-else auto label="Daftar order terbaru">
           <ul class="items people">
-            <li v-for="o in data.orders.latest" :key="o.id">
+            <li v-for="o in phoneTop(data.orders.latest)" :key="o.id">
               <NuxtLink :to="{ path: '/order-undangan', query: { order: o.id } }" class="person">
                 <FaceAvatar :seed="o.contact || o.id" :name="o.name" :size="38" />
                 <span class="min-w-0 flex-1">
@@ -215,7 +218,7 @@ const tint = (color: string) => ({ color, background: `color-mix(in srgb, ${colo
           <EmptyState v-else-if="!activity.length" title="Belum ada aktivitas" description="Aktivitas akan muncul di sini." class="fill" />
           <AutoScrollList v-else auto label="Daftar aktivitas terbaru">
           <ul class="items">
-            <li v-for="(a, i) in activity" :key="`${a.at}-${i}`" class="item">
+            <li v-for="(a, i) in phoneTop(activity)" :key="`${a.at}-${i}`" class="item">
               <span class="act-icon" :style="tint(a.color)" aria-hidden="true"><component :is="a.icon" :size="17" /></span>
               <span class="min-w-0 flex-1">
                 <span class="item-title block truncate">{{ a.title }}</span>
@@ -253,6 +256,8 @@ const tint = (color: string) => ({ color, background: `color-mix(in srgb, ${colo
 .row-3 > .panel { height: var(--list-h, 320px); }
 /* Satu kolom (ponsel/tablet): tinggi mengikuti isi, maks. 420px lalu digulir di dalam panel. */
 @media (max-width: 1023.98px) { .row-3 > .panel { height: auto; max-height: 420px; } }
+/* Ponsel: kartu setinggi isinya (4 baris teratas), tanpa gulir di dalam kartu. */
+@media (max-width: 767.98px) { .row-3 > .panel { max-height: none; } .row-3 .panel-body { overflow: visible; } }
 .row-3 .panel-body { overflow: hidden; }
 .fill { flex: 1; justify-content: center; }
 .link-sm { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--brand); white-space: nowrap; }

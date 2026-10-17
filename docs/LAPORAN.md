@@ -319,6 +319,13 @@ Hasil pindai setelah perbaikan: tidak ada teks/kontrol yang mepet tepi di semua 
 - Tidak ada data setengah jadi: pengecekan berjalan sebelum akun dibuat / akses diubah.
 - Pencegahan: tes baru `tests/unit/embeds.test.ts` memindai semua kueri server; gagal bila ada embed `profiles(` tanpa nama relasi (terbukti gagal pada kode lama).
 
+## 5ac. Ponsel: daftar tanpa gulir otomatis, 4 teratas
+
+- Masalah: di ponsel, daftar yang bergulir sendiri (Data form masuk, Aktivitas, Katalog) dan daftar yang bisa digulir di dalam kartu (Hadiah terpopuler) membuat gulir halaman "tersangkut" — pengguna mengira aplikasi lag.
+- Kini di ponsel (< 768px, sama dengan batas menu bawah): **tanpa gulir otomatis dan tanpa gulir di dalam kartu**; tiap daftar hanya menampilkan **4 teratas** dan kartunya setinggi isi. Hadiah terpopuler & Data form masuk tetap punya tautan "Lihat semua"; Katalog di detail undangan punya tombol kecil "Tampilkan semua N hadiah" (karena katalog tidak ada di halaman lain).
+- Desktop & tablet tidak berubah (tetap bergulir otomatis halus, berhenti saat disorot).
+- Uji: e2e ponsel (maks. 4 baris, tidak bergerak, tidak ada gulir di dalam kartu, tombol tampilkan semua) & desktop (tetap bergulir otomatis).
+
 ## 6. Belum dilakukan / butuh keputusan atau credential
 
 1. **Deploy Vercel** belum dilakukan (tidak ada akses Vercel). Setelah deploy: isi env, atur Auth URL, bootstrap admin.

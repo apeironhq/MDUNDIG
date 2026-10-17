@@ -4,6 +4,8 @@
 // (salinan kedua menyambung di bawah, jadi tidak pernah melompat kembali ke atas). Gerak memakai transform
 // sub-piksel agar halus; berhenti saat disorot/difokus/disentuh atau tab tersembunyi; roda mouse & tombol panah
 // tetap menggeser daftar. prefers-reduced-motion → kembali ke daftar biasa.
+// Ponsel (< 768px): tidak bergulir sama sekali (tanpa gerak otomatis & tanpa gulir di dalam kartu) — halaman yang memakai
+// komponen ini menampilkan beberapa baris teratas saja, sehingga gulir halaman tidak "tersangkut" di daftar.
 const props = withDefaults(defineProps<{ label: string; auto?: boolean; speed?: number }>(), { auto: false, speed: 10 })
 const box = ref<HTMLElement | null>(null)
 const first = ref<HTMLElement | null>(null)
@@ -21,7 +23,8 @@ let running = false
 let ro: ResizeObserver | undefined
 let io: IntersectionObserver | undefined
 
-const marquee = computed(() => props.auto && !reduced.value)
+const phone = useIsPhone()
+const marquee = computed(() => props.auto && !reduced.value && !phone.value)
 
 function apply() { if (track.value) track.value.style.transform = `translate3d(0, ${-offset}px, 0)` }
 function wrap() { if (period > 0) offset = ((offset % period) + period) % period }
@@ -79,7 +82,7 @@ watch(looping, (v) => { if (v) startLoop(); else stopLoop() })
 </script>
 
 <template>
-  <div ref="box" class="auto-scroll" :class="{ looping, marquee }" tabindex="0" role="region" :aria-label="label"
+  <div ref="box" class="auto-scroll" :class="{ looping, marquee, 'is-static': phone }" :tabindex="phone ? -1 : 0" role="region" :aria-label="label"
     @mouseenter="setPaused(true)" @mouseleave="setPaused(false)" @focusin="setPaused(true)" @focusout="setPaused(false)"
     @touchstart.passive="hold(4000)" @wheel="onWheel" @keydown="onKey">
     <div ref="track" class="track">
@@ -100,4 +103,6 @@ watch(looping, (v) => { if (v) startLoop(); else stopLoop() })
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14px, #000 calc(100% - 18px), transparent);
   mask-image: linear-gradient(to bottom, transparent, #000 14px, #000 calc(100% - 18px), transparent); }
 .looping .track { will-change: transform; }
+/* Ponsel: daftar statis setinggi isinya — tanpa gulir di dalam, tanpa tepi memudar. */
+.auto-scroll.is-static { flex: none; overflow: visible; margin-right: 0; padding-right: 0; -webkit-mask-image: none; mask-image: none; }
 </style>
